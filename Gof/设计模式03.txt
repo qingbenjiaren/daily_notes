@@ -1,0 +1,129 @@
+课程主题
+	单例设计模式￥Spring家族介绍
+	
+课程目标
+	1.掌握双重检查锁方式的单例模式
+	2.了解并发编程中的原子性，有序性，可见性
+	3.了解并发编程中的指令重排序
+	4.了解Spring全家桶成员，重点是要分清楚每个成员的定位
+	5.掌握Spring核心概念，比如IOC，DI，AOP,BOP
+	6.了解spring framework（也就是我们常常说的Spring）各个组件的作用
+	7.了解spring最高级接口BeanFactory的继承体系
+	8.掌握Spring IOC模块是如何产生并管理bean的
+
+课程回顾
+	1.简单工厂
+	
+	2.工厂方法
+
+	3.抽象工厂
+	
+	4.原型模式
+	
+	5.构建者模式
+	
+	6.单例模式的静态内部类写法
+	
+课程内容
+	1.单例模式的双重锁检查写法
+	
+		疑问？既然饿汉式已经是线程安全的了，为什么还要学习懒汉式呢？
+		
+		首先，是应付面试，可以通过懒汉式的写法去问一些并发编程的问题
+		其次，如果由很多对象，都需要使用单例模式去管理，那么不一定这些对象都会被使用到的，如果不使用，你就帮助创建好了，那么会造成浪费资源。
+		
+		线程的执行是通过获取CPU时间片去执行的，等到CPU时间片使用完之后，
+		public class Student4 {
+	private static Student4 student = null;
+	private Student4() {}
+	// 此处考验对synchronized知识点的掌握情况
+	public static Student4 getSingletonInstance() {
+		if (student == null) {
+			// 采用这种方式，对于对象的选择会有问题
+			// JVM优化机制：先分配内存空间，再初始化
+			synchronized (Student4.class) {
+				if (student == null) {
+					student = new Student4();//高级语言一行，在字节码里可能是很多步骤
+					//student.setName("ss")
+					//new --- 开辟JVM中堆空间---产生堆内存地址保存到栈内存的student引用中---创建对象
+					// 存在的问题：
+                    //a.new 关键字会触发Student类的类加载（如果已经加载，则此步骤作废）
+                    //b.根据Class对象中的信息，去开辟相应大小的内存空间
+                    //c.初始化Student对象，就是完成成员变量的初始化操作（到这一部，我们才能说该对象是可用的）
+                    //d.将开辟出来的内存空间地址，赋值给栈空间的变量student（引用）
+                    //以上步骤，其实都是通过字节码指令去完成的
+                    //物理机器直接操作的都是CPU指令，二进制代码（原子性其实是相对我们CPU指令来说的）
+                    //指令重排序（JIT编译器优化）
+                    //有序性 int x = 10;
+                    //		boolean f = false;
+                    //		x++;
+                    //		flag = true;
+                    //happend-before(六大原则)
+                    //如果两行代码执行顺序交换后不会影响最终的程序执行结果，那么JIT即时编译器会根据情况去进行指令重排序
+                    //如果程序之间没有依赖性，则可以进行指令重排序
+                    //而以上代码中，c和d之间没有依赖性（因为d可以先执行，因为内存空间已经开辟出来了），所以可能会指令重排序
+                    //当该线程走到d步骤时，这个时候student已经被分配空间了不为空，但是，此时student还未完成，直接调用会报错，而刚刚好另外一个线程走到了第一次空值判断，判断结构不为空，直接返回使用报错
+                    //这个时候，就该volatile出场了
+					//volatile可以保证程序的有序性，禁止指令重排序
+				}
+			}
+		}
+		return student;
+	}
+	//student.getName();
+}
+扩展volatile
+volatile关键字的作用
+	一个是禁止指令重排序
+	另一个作用是禁止使用CPU缓存。（可见性）
+	
+	可见性：
+		在CPU单核时代，线程1和线程2使用的是同一个CPU缓存，所以线程之间的数据是可见的
+		在CPU多核时代，线程1在A核，线程2在B核，每个核都有自己的CPU缓存空间
+		
+
+2.Spring
+	Spring全家桶
+		Spring Framework
+		Spring boot
+		Spring data
+		Spring cloud
+		Spring security
+		
+	核心概念
+		IOC
+			控制反转，创建对象的权力，由程序员反转给了Spring容器。
+			
+			Ioc的实现，必须依赖DI，因为IOC只是负责对象的创建，而对象船舰过程中需要将对象的依赖进行实现
+			此时使用到的就是DI
+		DI
+			依赖注入
+			它必须依赖于IOC
+		AOP
+			面向切面编程，主要解决的就是系统功能和业务功能之间的解耦。
+			Spring容器可以去创建对象，并且对对象进行管理。被Spring容器管理的bean还可以使用AOP进行功能增强。
+			AOP是oop的延续，他们都是编程思想。
+		BOP	
+			Spring是面向Bean进行编程的，在Spring中，一切对象都是Bean
+				
+	Spring IOC模块手写
+		最终spring ioc要实现的就是bean的创建于管理。然后被Spring管理的bean由很多，我们交给专业的bean工厂来创建bean
+		class BeanFactory{
+			private Map<String,Object> maps = xxx;
+			Object getBean(String beanName){
+				//读取缓存
+				//当从缓存中没有找到想要的bean对象，再去执行解析流程和创建流程
+				//2.创建流程（根据BeanDefinition对象去创建）
+					//bean的实例化（调用构造方法new对象）
+					//bean的属性填充（调用set方法设置属性）
+					//bean的初始化（调用初始化方法，完成一些操作）
+				
+			}
+			//BeanFacotry初始化的时候，就应该去完成解析操作
+			public void init(){
+				//1.解析流程（读取配置文件（xml或者注解）-------BeanDefinition对象（封装了bean的定义信息，包括类路径，属性信息等））
+				//通过xml或者注解对beam进行配置，最终建立bean和beanname之间的映射关系
+			}
+		}
+	
+	
