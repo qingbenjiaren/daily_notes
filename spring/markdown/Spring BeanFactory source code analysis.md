@@ -649,7 +649,7 @@ protected final void refreshBeanFactory() throws BeansException {
 									|--BeanDefinitionParserDelegate#parseCustomElement
 ```
 
-**流程相关类的说明**
+#### **流程相关类的说明**
 
 - **AbstractRefreshableApplicationContext**
 
@@ -670,4 +670,168 @@ protected final void refreshBeanFactory() throws BeansException {
 - **DefaultBeanDefinitionDocumentReader**
 
 - **BeanDefinitionParserDelegate**
+
+#### 流程解析
+
+- **进入AbstractXmlApplicationContext的loadBeanDefinitions方法**
+
+  创建一个XmlBeanDefinitionReader，通过阅读XML文件，真正完成BeanDefinition的加载和注册
+
+  配置XmlBeanDefinitionReader并进行初始化
+
+  委托给XmlBeanDefinitionReader去加载BeanDefinition
+
+```java
+protected void loadBeanDefinitions(DefaultListableBeanFactory beanFactory) throws BeansException, IOException {
+    //Create a new XmlBeanDefinitionReader for the given BeanFactory
+    //作用：通过阅读XML文件，真正完成BeanDefinition的加载和注册
+        XmlBeanDefinitionReader beanDefinitionReader = new XmlBeanDefinitionReader(beanFactory);
+    //Configure the bean definition reader with this context's resource loading evironment
+        beanDefinitionReader.setEnvironment(this.getEnvironment());
+        beanDefinitionReader.setResourceLoader(this);
+        beanDefinitionReader.setEntityResolver(new ResourceEntityResolver(this));
+    //Allow a subclass to provide custom initialization of the reader,
+    //then proceed with actually loading the bean definition
+        this.initBeanDefinitionReader(beanDefinitionReader);
+    //委托给BeanDefinition阅读器去加载BeanDefinition
+        this.loadBeanDefinitions(beanDefinitionReader);
+    }
+protected void loadBeanDefinitions(XmlBeanDefinitionReader reader) throws BeansException, IOException {
+    //获取资源的定位
+    //这里getConfigResources是一个空实现，真正实现是调用子类的获取资源定位的方法
+    //比如：ClassPathXmlApplicationContext中进行了实现
+    //而FileSystemXmlApplicationContext没有使用该方法
+        Resource[] configResources = this.getConfigResources();
+        if (configResources != null) {
+            //XML Bean读取器调用其父类AbstractBeanDefinitionReader读取定位资源
+            reader.loadBeanDefinitions(configResources);
+        }
+		//如果子类中获取的资源为空，则获取FileSystemXmlApplicationContext构造方法中setConfigLocations方法设置资源
+        String[] configLocations = this.getConfigLocations();
+        if (configLocations != null) {
+            //XML Bean读取器调用其父类AbstractBeanDefinitionReader读取定位的资源
+            reader.loadBeanDefinitions(configLocations);
+        }
+
+    }
+```
+
+- **loadBeanDefinitions方法经过一路的兜兜转转，最终来到了XmlBeanDefinitionReader的doLoadBeanDefinitions方法**
+
+  一个是对XML文件进行DOM解析
+
+  一个是完成BeanDefinition对象的加载与注册
+
+```java
+protected int doLoadBeanDefinitions(InputSource inputSource, Resource resource) throws BeanDefinitionStoreException {
+        try {
+            //通过DOM4J加载解析XML文件，最终形成Document对象
+            Document doc = this.doLoadDocument(inputSource, resource);
+            //通过对Document对象的操作，完成BeanDefinition的加载和注册工作
+            int count = this.registerBeanDefinitions(doc, resource);
+            if (this.logger.isDebugEnabled()) {
+                this.logger.debug("Loaded " + count + " bean definitions from " + resource);
+            }
+
+            return count;
+        }
+    	//省略一些catch语句
+        catch (Throwable ex) {
+            ......
+        }
+    }
+```
+
+- **此处我们暂不处理DOM4J加载解析XML的流程，我们重点分析BeanDefinition的加载注册流程**
+
+- **进入XmlBeanDefinitionReader的registerBeanDefinitions方法**
+
+  创建DefaultBeanDefinitionDocumentReader用来解析Document对象
+
+  获得容器中已注册的BeanDefinition数量
+
+  委托给DefaultDefinitionDocumentReader来完成BeanDefinition的加载注册工作
+
+  统计新注册的BeanDefinition数量
+
+```java
+public int registerBeanDefinitions(Document doc, Resource resource) throws BeanDefinitionStoreException {
+    //创建DefaultBeanDefinitionDocumentReader用来解析Document对象
+        BeanDefinitionDocumentReader documentReader = this.createBeanDefinitionDocumentReader();
+    //获得容器中注册Bean数量
+        int countBefore = this.getRegistry().getBeanDefinitionCount();
+    //解析过程入口，BeanDefinitionDocumentReader只是个接口
+    //具体的实现过程在DefaultBeanDefinitionDocumentReader完成
+        documentReader.registerBeanDefinitions(doc, this.createReaderContext(resource));
+    //统计注册的Bean数量
+        return this.getRegistry().getBeanDefinitionCount() - countBefore;
+    }
+```
+
+- **进入DefaultBeanDefinitionDocumentReader的registerBeanDefinitions方法：**
+
+  获得Document的跟元素标签
+
+  真正实现BeanDefinition解析和注册工作
+
+```java
+public void registerBeanDefinitions(Document doc, XmlReaderContext readerContext) {
+        this.readerContext = readerContext;
+    //实现BeanDefinition解析和注册工作
+        this.doRegisterBeanDefinitions(doc.getDocumentElement());
+    }
+```
+
+- **进入DefaultBeanDefinitionDocumentReader的doRegisterBeanDefinitions方法：**
+
+  这里使用了委托模式，将具体的BeanDefinition解析工作交给了BeanDefinitionParserDelegate去完成
+
+  在解析Bean定义之前，进行自定义的解析，增强解析过程的可扩展性
+
+  委托给BeanDefinitionParserDelegate，从Document的跟元素开始进行BeanDefinition的解析
+
+  在解析Bean定义后，进行自定义解析，增加解析过程的可扩展性
+
+```java
+protected void doRegisterBeanDefinitions(Element root) {
+    //这里使用了委托模式，将具体的BeanDefinition解析工作交给了BeanDefinitionParserDelegate去完成
+        BeanDefinitionParserDelegate parent = this.delegate;
+        this.delegate = this.createDelegate(this.getReaderContext(), root, parent);
+        if (this.delegate.isDefaultNamespace(root)) {
+            String profileSpec = root.getAttribute("profile");
+            if (StringUtils.hasText(profileSpec)) {
+                String[] specifiedProfiles = StringUtils.tokenizeToStringArray(profileSpec, ",; ");
+                if (!this.getReaderContext().getEnvironment().acceptsProfiles(specifiedProfiles)) {
+                    if (this.logger.isDebugEnabled()) {
+                        this.logger.debug("Skipped XML bean definition file due to specified profiles [" + profileSpec + "] not matching: " + this.getReaderContext().getResource());
+                    }
+
+                    return;
+                }
+            }
+        }
+		//在解析Bean定义之前，进行自定义的解析，增强解析过程的可扩展性
+        this.preProcessXml(root);
+    	//委托给BeanDefinitionParserDelegate，从Document的跟元素开始进行
+        this.parseBeanDefinitions(root, this.delegate);
+    	//在解析Bean定义之后，进行自定义的解析，增加解析过程的可扩展性
+        this.postProcessXml(root);
+        this.delegate = parent;
+    }
+```
+
+### Bean实例化流程分析
+
+#### 找入口
+
+**AbstractApplicationContext的refresh方法**
+
+```java
+//Instantiate all remaining(non-lazy-init) singletons
+//STEP 11 实例化剩余的单例bean（非懒加载凡是）
+//注意事项：Bean的IOC/DI/AOP都是发生在此步骤
+this.finishBeanFactoryInitialization(beanFactory);
+```
+
+#### 解析流程
 
