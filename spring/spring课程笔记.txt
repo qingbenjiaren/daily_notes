@@ -1,0 +1,73 @@
+课程主题
+	手写spring ioc模块
+	
+课程目标
+	1.搞清楚BeanDefinition，PropertyValue，TypedStringValue，RuntimeBeanReference类的作用
+	2.搞清楚BeanFactory继承体系中各个接口和类的作用
+	3.搞清楚IOC模块中BeanDefinition注册流程和Bean实例的创建流程
+	
+课程回顾
+	1.单例模式
+		双重检查锁
+			初始JVM的并发编程
+					JMM:JAVA内存模型
+					原子性，有序性，可见性
+					volatile关键字
+					内存屏障
+					先行发生原则（happend before）
+					锁
+	
+	2.spring ioc流程
+		BeanDefinition的注册流程（XML,注解）
+		Bean的创建流程
+		BeanFactoryPostProcessor:<context:property-placeholder localtion="">
+		BeanPostProcessor:aop产生代理对象（和原对象已经不是一个对象）
+		
+课程内容
+	1.BeanFactory的继承体系
+	
+	2.手写spring ioc模块思路分析
+		spring容器，也叫ioc容器，这个容器分为基础容器和高级容器
+		基础容器就是BeanFactory
+		高级容器就是ApplicationContext，底层其实也是通过BeanFactory实现的Bean的管理
+		
+		BeanFactory和ApplicationContext区别是什么？
+		a)BeanFactory和ApplicationContext都是Spring的顶级接口
+		b)ApplicationContext是继承了BeanFactory
+		c)BeanFactory它生产对象是通过懒汉式生产的。
+			但是ApplicationContext产生对象是在应用启动的时候，一次性将【懒加载的单例bean】创建出来
+			
+			
+		AbstractBeanFacotry模板方法（项目经理）：规定流程，但是不负责细节
+		
+		2.手写spring ioc模块思想分析
+			UserService{
+				UserDao dao;
+				save(){
+					dao.save();
+				}
+			}
+			
+			UserDao{
+				save(){
+					sqlSession.insert();
+				}
+			}
+			Test{
+				main{
+					UserService service = new UserServiceImpl();
+					UserDao dao = new UserDaoImpl();
+					service.setDao(dao);//使用简单工厂模式实现Bean创建与代码的解耦
+				}
+			}
+			
+			
+			BeanDefinition
+				List<PropertyValue>
+					String name
+					Object value
+						TypeStringValue
+							value 
+							type
+						RuntimeBeanReference
+							
