@@ -1,0 +1,111 @@
+第一步：
+	顶级接口：BeanFactory
+		//根据bean的名称获取bean的实例
+		Object getBean(String name);
+第二步：
+	实现类：以及各中间接口
+		/**
+		* 可以将工厂中的bean或者名称进行列表化展示
+		*/
+		ListableBeanFactory extends BeanFactory
+			//根据bean的类型，获取它以及子类型相对应的实例集合
+			List<Object> getBeansByType(Class<?> type);
+			List<String> getBeanNamesByType(Class<?> type);
+		/**
+		* 具备对bean实例进行装配功能的工厂
+		*/
+		AutowireCapableBeanFactory extends BeanFactory
+			//创建Bean实例的工程
+			void createBean(BeanDefinition beanDefinition);
+			此时需要创建BeanDefinition类
+			
+		/**
+		* 定义bean的获取流程
+		*/
+		abstract AbstractBeanFactory implements BeanFactory
+			public Object getBean(String beanName){
+				//TODO 会调用AbstractAutowireCapableBeanFactory的createBean功能
+				//模板方法设计模式
+			}
+			
+		abstract AbstractAutowireBeanFactory extends abstract AbstractBeanFactory implements AutowireCapableBeanFactory
+			Object createBean(Definition definition){
+				//完成bean的创建
+			}
+			
+			
+			
+		DefaultListableBeanFactory implements BeanDefinitionRegistry extends AbstractAutowireBeanFactory
+			DefaultListableBeanFactory(String localtion){
+				Resource resource = new ClasspathResource(location);
+				//注意这里了，为什么要用一个Resource的抽象
+				//资源的创建交给子类
+				//因为这里Resource可以有很多实现类
+				//有的资源是通过文件路径
+				//有的资源是网络资源
+				//可能还有文件系统
+				//将资源抽象为一个接口，通过该接口可以获取不同地方的资源
+				InputStream is = resource.getResource();
+				//对xml文件进行加载,然后获取BeanDefinition信息
+				//传入this接口隔离原则，因为this实现BeanDefinitionRegistry
+				//对面入参用BeanDefinitionRegistry接收
+				XmlBeanDefinitionReader beanDefitionReader = new XmlBeanDefinitionReader(this);
+				beanDefitionReader.loadBeanDefinitions(is);
+				
+			}
+			
+		XmlBeanDefinitionReader
+			BeanDefinitionRegistry beanDefinitionRegistry;
+			
+			XmlBeanDefinitionReader（BeanDefinitionRegistry r）{
+				this.
+			}
+			
+			public void loadBeanDefinitions(InputStream is){
+				//然后类似mybatis的源码编写过程，去解析inputStream对象
+				Doucument document = DocumentReader.createDocument(is);
+				
+				XmlBeanDefinitionDocumentReader documentReader = new XmlBeanDefinitionDocumentReader(this);
+				documentReader.loadBeanDefinitions(document.getRootElement);
+			}
+			
+		
+		/**
+		* 根据bean标签的语义去解析Document对象
+		*/
+		XmlBeanDefinitionDocumentReader
+			BeanDefinitionRegistry beanDefinitionRegistry;//提供BeanDefinition的注册和管理
+			
+			XmlBeanDefinitionDocumentReader(BeanDefinitionRegistry r){
+				this.r =r;
+			}
+			
+			public void loadBeanDefinitions(Element element){
+				List<Element> elements = rootElement.elements();
+				for(){
+					if(){
+						//默认标签bean
+						parseDefaultElement();
+					}else{
+						//自定义标签
+						
+					}
+				}
+			}
+			//看代码了
+		
+		/**
+		* 管理BeanDefinition
+		*/
+		BeanDefinitionRegistry
+			BeanDefinition getBeanDefinition(String name);
+			
+			void registerBeanDefinition(String name,BeanDefinition definition);
+			
+		
+			
+				
+		
+		
+		
+		
