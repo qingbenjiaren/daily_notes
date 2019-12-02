@@ -1,0 +1,78 @@
+课程主题
+	springmvc流程，适配器模式，手写mvc框架
+	
+课程目标
+	1.掌握springmvc中的请求处理流程的原理
+	2.要清楚springmvc中六大组件的作用
+	3.重点搞清楚处理器Handler，处理器映射器HandlerMappings，处理器适配器HandlerAdapter的功能
+	4.要掌握适配器模式的用法
+	5.手写SpringMvc框架思路分析
+
+课程回顾
+	1.Spring中AOP产生的代理对象的执行流程分析
+	
+课程内容
+	1.看一下录播课内容
+	2.分析web应用的访问全路径
+	3.适配器模式
+	4.手写mvc框架
+	
+url-pattern有四种方式
+	按照匹配优先级
+		/app/saveUser
+		/*(springmvc不能使用)（为什么，看课程视频）主要原因，springmvc没有提供JSPServlet，提供的是DispatchServlet
+		/*.do
+		/
+		
+DispatcherServlet:前端控制器
+	MVC角色：C
+	作用：接受前端请求、
+		  请求分发、
+		  相应处理结果
+		 找到处理器之后，要统一调用处理器的处理功能（会返回不同类型的处理器，而这里不用去instanceof 而是用适配器模式调用HandlerAdapter）
+		  
+HandlerMapping：处理器映射器
+	作用：
+		建立请求和处理器的映射关系（初始化要做的）
+		根据请求查找到对应的处理器（每次请求要做的）
+		
+		由于映射关系的建立有多种方式，所以按照面向对象来分析，我们有多个HandlerMapping的实现类
+			BeanNameUrlHandlerMapping
+			SimpleUrlHandlerMapping
+			RequestMappingHandlerMapping
+			
+HandlerAdapter:处理器适配器
+	作用：将不同的处理器，统一适配成HandlerAdapter接口类型
+		不同的处理器类型，对应不同的适配器
+		一个适配器，对应同一类型处理器
+		所以说适配器也多多种实现：
+			RequestMappingHandlerAdapter
+			HttpRequestHandlerAdaptor
+			SimpleControllerHandlerAdapter
+		
+		  
+
+Handler：处理器
+	MVC角色：M（业务model）
+	作用：处理业务请求
+	编写方式有多种：纯注解方式（HandlerMethod）、HttpRequestHandler接口、SimpleControllerHandler接口
+	
+viewResolver:视图解析器
+	作用：根据视图名称，解析出来视图对象（JSP对象，PDF文件对象）
+	
+View：视图
+	MVC角色：V
+	作用：美化处理结果
+	
+	
+适配器模式：
+	类的适配器模式
+	
+	对象的适配器模式
+	接口的适配器模式
+	
+	
+手写mvc框架1.0
+	只要是使用java来处理web请求，底层都是使用的servlet程序去处理的
+	需求：
+		http://localhost:8080/saveUser?id=1&name=
