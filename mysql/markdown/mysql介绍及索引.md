@@ -308,3 +308,322 @@ select id,name from t where name = 'Tom';
 
 如果字段比较少，可以在辅助索引上加组合索引，这样一棵树就能全部查出来，如果字段较多，回表就回表吧，这个需要综合考虑,分析业务场景
 综上所述，sql语句最好是不用select * 
+
+## 索引使用场景
+
+### 那些情况下需要使用索引
+
+1. 主键自动建立唯一索引
+2. 频繁作为查询条件的字段应该创建索引
+3. 多表关联查询中，关联字段应该创建索引on两边都要创建索引
+4. 查询中排序的字段，应该创建索引B+Tree有顺序
+5. 覆盖索引 不需要回表 组合索引
+6. 统计或者分组字段，应该创建索引
+
+### 那些情况不需要创建索引
+
+1. 表记录太少，索引是要有存储的开销
+2. 频繁更新，索引需要维护
+3. 查询字段使用频率不高
+
+### 组合索引
+
+由多个字段组成的索引，使用顺序就是创建的顺序
+
+```mysql
+ALTER TABLE 'table_name' ADD INDEX index_name(col1,col2,col3);
+```
+
+![](mysql介绍及索引.assets/聚集索引组合索引-1576114784571.png)
+
+在一颗索引树上有多个字段
+
+**优势：**效率高、省空间、容易形成覆盖索引
+
+#### 使用
+
+遵循最左前缀原则
+
+**前缀索引：**like 常量% 使用索引 like %常量 不适用索引
+
+**最左前缀：**从左向右匹配知道遇到范围查询><between 索引失效
+
+```mysql
+create table t1(id int primary key,a int,b int,c int,d int);
+desc t1;
++-------+---------+------+-----+---------+-------+
+| Field | Type    | Null | Key | Default | Extra |
++-------+---------+------+-----+---------+-------+
+| id    | int(11) | NO   | PRI | NULL    |       |
+| a     | int(11) | YES  |     | NULL    |       |
+| b     | int(11) | YES  |     | NULL    |       |
+| c     | int(11) | YES  |     | NULL    |       |
+| d     | int(11) | YES  |     | NULL    |       |
++-------+---------+------+-----+---------+-------+
+alter table t1 add index idx_a_b_c_d(a,b,c,d);
+show index from t1;
+```
+
+![](mysql介绍及索引.assets/QQ图片20191212095356.png)
+
+
+
+```mysql
+explain select *from t1 where a=1 and b=1 and c=1 and d=1;
+```
+
+![](mysql介绍及索引.assets/QQ图片20191212095558.png)
+
+
+
+## 索引失效
+
+### 查看执行计划
+
+#### 参数说明
+
+explain出来的信息有10列，分别是
+
+> id	select_type	table	type	possible_keys	key	key_len	ref	rows	Extra
+
+案例表
+
+```sql
+--用户表
+create table tuser(
+id int primary key,
+loginname varchar(100),
+name varchar(100),
+age int,
+sex char(1),
+dep int,
+address varchar(100)
+);
+--部门表
+create table tdep(
+id int primary key,
+name varchar(100)
+);
+--地址表
+create table taddr(
+id int primary key,
+addr varchar(100)
+);
+--创建普通索引
+mysql> alter table tuser add index idx_dep(dep);
+--创建唯一索引
+mysql> alter table tuser add unique index idx_loginname(loginname);
+--创建组合索引
+mysql> alter table tuser add index idx_name_age_sex(name,age,sex);
+--创建全文索引
+mysql> alter table taddr add fulltext ft_addr(addr);
+```
+
+##### id
+
+- 每个select语句都会自动分配的一个唯一标识符。
+- 表示查询中操作表的顺序，有三种情况
+  - id相同：执行顺序由上到下
+  - id不同：如果是子查询，id号回自增，**id越大，优先级越高**
+  - id相同的不同的同时存在
+- id列为null的就表示这是一个结果集，不需要使用它来进行查询
+
+##### select_type(重要)
+
+**查询类型**，主要用于区别**普通查询、联合查询、子查询等复杂查询**
+
+###### simple
+
+表示不需要union操作或者不包含子查询的简单select查询。有连接查询时，外层的查询为simple，且只有一个
+
+![](mysql介绍及索引.assets/QQ图片20191212145211.png)
+
+###### primary
+
+一个需要union操作或者含有子查询的select，位于最外层的单位查询的select_type即为primary，且只有一个
+
+![](mysql介绍及索引.assets/1.png)
+
+###### subquery
+
+除了from子句中包含的子查询外，其他地方出现的子查询都可能是subquery
+
+![](mysql介绍及索引.assets/2.png)
+
+###### dependent subquery
+
+与dependent union类似，表示这个subquery的查询要受到外部表查询的影响
+
+![](mysql介绍及索引.assets/3.png)
+
+###### union
+
+union连接的两个select查询，第一个查询时PRIMARY，除了第一个外，其他都是union
+
+![](mysql介绍及索引.assets/4.png)
+
+
+
+###### dependent union
+
+与union一样，出现在union或union all语句中，但是这个查询要受到外部查询的影响
+
+![](mysql介绍及索引.assets/5.png)
+
+###### union result
+
+包含union的结果集，在union和union all语句中，因为它不需要参与查询，所以id字段为null
+
+###### derived
+
+from中出现的子查询，也叫做派生表，其他数据库中可能叫做内联视图或嵌套select
+
+##### table
+
+显示的查询表名，如果查询使用了别名，那么这里显示的是别名
+
+如果不涉及对数据表的操作，这里应该是null
+
+如果显示为尖括号括起来的就表示这个是临时表，后边的N就是执行计划中的ID，表示结果来自于这个查询产生
+
+如果是尖括号括起来的<union ,M,N>也是临时表，表示这个结果来自于union查询的id为M,N的结果集
+
+##### type(重要)
+
+- 依次从好到差
+
+
+> system	const 	eq_ref	 ref 	fulltext	ref_or_null	unique_subquery	index_subquery	range	index_merge	index	ALL 
+
+**除了all之外，其他的type都可以使用到索引，除了index_merge之外，其他的type只可以用到一个索引**
+
+优化器会选用最优索引
+
+- **注意事项**
+
+> 最少要索引使用到range级别
+
+###### system
+
+表中只有一行数据或者是空表,mysql5.7没事测试出来，不重要
+
+###### const（重要）
+
+使用**唯一索引或者主键**，返回记录一定是1行记录的等值where条件时，通常type是const。其他数据库也叫唯一索引扫描
+
+![](mysql介绍及索引.assets/6.png)
+
+###### eq_ref(重要)
+
+关键字：连接字段**主键或唯一性索引**
+
+此类型通常出现在多表的join查询，表示对于前表的每一个结果，**都只能匹配到后表的一行结果**，并且查询的比较操作通常是‘=’查询效率较高
+
+![](mysql介绍及索引.assets/7.png)
+
+###### ref(重要)
+
+**针对非唯一性索引**，使用**等值（=）查询非主键**，或者使用了**最左前缀规则索引的查询**
+
+- 非唯一索引
+
+  ```mysql
+  #非唯一索引
+  explain select * from tuser where dep='1';
+  ```
+
+![](mysql介绍及索引.assets/8.png)
+
+
+
+- 等值非主键连接
+
+  ```mysql
+  #等值非主键连接
+  explain select a.id from tuser a left join tdep b on a.name = b.name;
+  ```
+
+![](mysql介绍及索引.assets/10.png)
+
+- 最左前缀
+
+  ```mysql
+  #最左前缀
+  explain select id from tuser where name = 'melo';
+  ```
+
+![](mysql介绍及索引.assets/9.png)
+
+​		不满足最左前缀的，就会全表扫描
+
+```mysql
+explain select * from tuser where sex = '1';
+##结果出来type为ALL
+```
+
+###### fulltext
+
+全文索引检索，要注意，全文索引的优先级很高，若全文索引和普通索引同时存在时，mysql不管代价，优先选择使用全文索引
+
+###### ref_or_null
+
+与ref方法类似，只是增加了null值的比较，实际用的不多。
+
+###### unique_subquery
+
+用于where中in形式子查询，子查询返回不重复的唯一值
+
+###### index_subquery
+
+用in形式子查询使用到了辅助索引或者in常数列表，子查询可能返回重复值，可以使用索引将子查询去重
+
+###### range(重要)
+
+**索引范围扫描**，常见与使用>,<,is null,between,in,like等运算符的查询中。
+
+```mysql
+#>
+explain select * from tuser where id>0;
+```
+
+![](mysql介绍及索引.assets/11.png)
+
+```mysql
+#like 前缀索引
+explain select * from tuser where name like 'm%';
+```
+
+![](../../../../../Users/26630/Pictures/tmp/12.png)
+
+###### index merge
+
+表示查询使用了两个以上的索引，最后取交集或者并集，常见and ，or的条件使用了不同的索引
+
+###### index(重要)
+
+**索引全扫描，MYSQL遍历整个索引来查找匹配的行。（虽然where条件中没有用到索引，但是要取出的列title是索引包含的列，所以只要全表扫描索引即可，直接使用索引树查找数据）**
+
+**索引全表扫描**，把索引从头到尾扫一遍，常见于使用索引列就可以处理不需要读取数据文件的查询、可以使用索引排序或者分组的查询。
+
+```mysql
+#单索引
+explain select loginname from tuser;
+#组合索引
+explain select age from tuser;
+```
+
+###### ALL(重要)
+
+这个就是全表扫描数据文件，然后再在server层进行过滤返回符合要求的记录。
+
+
+
+##### extra（重要）
+
+这个列包含不适合在其塔列中显示但十分重要的额外信息，这个列可以显示的信息非常多，有几十种，常用的有
+
+###### no tables used
+
+不带from的查询或者from dual查询
+
+使用not in()形式子查询或not exists运算符的连接查询，
