@@ -626,4 +626,60 @@ explain select age from tuser;
 
 不带from的查询或者from dual查询
 
-使用not in()形式子查询或not exists运算符的连接查询，
+使用not in()形式子查询或not exists运算符的连接查询，这种叫做反连接
+
+即，一般连接查询是先查询内表，再查询外表，反连接就是先查询外表，再查询内表
+
+###### using filesort
+
+- 排序时无法使用到索引时，就会出现这个。常见于order by和group by语句中
+- 说明MySQL会使用到一个外部的索引排序，而不是按照索引顺序进行读取
+- Mysql中无法利用索引完成的排序操作称为“文件排序”
+
+```mysql
+explain select * from tuser order by address;
+```
+
+###### using index(重要)
+
+查询时**不需要回表查询**，直接通过索引就可以获取查询的数据
+
+- 表示相应的SELECT查询中使用到了**覆盖索引（Coverring Index）**，避免访问表的数据行，效率不错
+- 如果同时出现Using where，说明索引被用来执行查找索引键值
+- 如果没有同时出现Using Where，表明索引用来读取数据而非执行查找动作
+
+```mysql
+explain select name,age,sex,id from tuser;
+```
+
+###### using temporary
+
+表明使用了临时存储中间结果
+
+- MySql在对查询结果order by和group by时使用临时表
+- 临时表可以是内存临时表和磁盘临时表，执行计划中看不出来，需要查看status变量
+
+###### distinct
+
+在select部分使用了distinct关键字（索引字段）
+
+```mysql
+explain select distinct a.id from tuser a, tdep b where a.dep = b.id;
+```
+
+###### using where
+
+表示存储引擎返回的记录并不是满足所有的查询条件，需要在server层进行过滤
+
+```sql
+--查询条件无索引
+mysql> explain select * from tuser where address='beijing';
+--索引失效
+mysql> explain select * from tuser where age=1;
+explain select * from tuser where id in(1,2);
+```
+
+
+
+
+
