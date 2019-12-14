@@ -1,0 +1,10 @@
+在mysql默认事务隔离级别下
+session 1未提交的更新其他session无法看到
+
+行锁
+	共享度锁：
+		查询语句本身无锁：select * from mylock;
+		要加共享读锁，需要手动添加：select * from mylock where id=1 lock in share mode;
+		若where条件是索引字段，对该条查询语句加共享读（lock in share mode）是行锁，其他事务可以对该条记录加共享读，但是不能对该记录加排他写，
+		若where条件不是索引字段，对该条查询语句加共享读（lock in share mode）是表锁，其他事务可以对该表的记录加共享读，但是不能对该表的记录加排他写。
+		
