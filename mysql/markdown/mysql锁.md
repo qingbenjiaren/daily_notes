@@ -172,10 +172,124 @@ InnoDB也实现了表级锁，也就是易向锁，意向锁是mysql内部使用
 
 ### 行锁演示
 
+**InnoDB**行锁是通过给索引上的**索引项加锁来实现的**，因此InnoDB这种行锁实现特点以为着，只有通过索引条件检索的数据，InnoDB才使用行级锁，否则，InnoDB使用表级锁。
 
+where 索引 行锁 否则 表锁
 
-```mysql
-#查看行锁状态
-show status like 'innodb_row_lock'
+#### 行读锁
+
+```sql
+--查看行锁状态
+show status like 'innodb_row_lock';
+1、session1: begin;--开启事务未提交
+     select * from mylock  where ID=1 lock in share mode; --手动加id=1的行读锁,使用索引
+2、session2：update mylock set name='y' where id=2; -- 未锁定该行可以修改
+3、session2：update mylock set name='y' where id=1; -- 锁定该行修改阻塞
+ERROR 1205 (HY000): Lock wait timeout exceeded; try restarting transaction
+ -- 锁定超时
+4、session1: commit; --提交事务 或者 rollback 释放读锁
+5、session2：update mylock set name='y' where id=1; --修改成功
+     Query OK, 1 row affected (0.00 sec)
+     Rows matched: 1 Changed: 1 Warnings: 0
+
 ```
 
+#### 行锁升级为表锁
+
+```sql
+1、session1: begin;--开启事务未提交
+      --手动加name='c'的行读锁,未使用索引
+      select * from mylock  where name='c' lock in share mode;
+2、session2：update mylock set name='y' where id=2; -- 修改阻塞 未用索引行锁升级为表锁
+3、session1: commit; --提交事务 或者 rollback 释放读锁
+4、session2：update mylock set name='y' where id=2; --修改成功
+     Query OK, 1 row affected (0.00 sec)
+     Rows matched: 1 Changed: 1 Warnings: 0
+```
+
+#### 行写锁
+
+```sql
+1、session1: begin;--开启事务未提交
+      --手动加id=1的行写锁,
+      select * from mylock  where id=1 for update;
+     
+2、session2：select * from mylock  where id=2 ; -- 可以访问
+3、session2: select * from mylock  where id=1 ; -- 可以读 不加锁 
+  4、session2: select * from mylock  where id=1 lock in share mode ; -- 加读锁被阻塞
+5、session1：commit; -- 提交事务 或者 rollback 释放写锁
+5、session2：执行成功
+```
+
+#### 间隙锁
+
+**间隙锁防止两种情况**
+
+防止插入间隙内的数据。
+
+防止已有数据更新为间隙内的数据。
+
+![](mysql锁.assets/间隙锁.png)
+
+
+
+##### 非唯一索引等值
+
+```sql
+-- 非唯一索引的等值
+session 1:
+start transaction ;
+update news set number=3 where number=4;
+session 2:
+start transaction ;
+insert into news value(2,3);#（均在间隙内，阻塞）
+insert into news value(7,8);#（均在间隙外，成功）
+insert into news value(2,8);#（id在间隙内，number在间隙外，成功）
+insert into news value(4,8);#（id在间隙内，number在间隙外，成功）
+insert into news value(7,3);#（id在间隙外，number在间隙内，阻塞）
+insert into news value(7,2);# (id在间隙外，number为上边缘数据，阻塞)
+insert into news value(2,2);#（id在间隙内，number为上边缘数据，阻塞）
+insert into news value(7,5);#（id在间隙外，number为下边缘数据，成功）
+insert into news value(4,5);#（id在间隙内，number为下边缘数据，阻塞）
+```
+
+**结论：只要number（where后面的）在间隙里（2，3, 4），不包含最后一个数（5）则不管ID是多少都会阻塞。number是下边缘，若ID在间隙内会阻塞**
+
+##### 主键索引范围
+
+```sql
+--主键索引范围
+session 1:
+start transaction ;
+update news set number=3 where id>1 and id <6;
+session 2:
+start transaction ;
+insert into news value(2,3);#（均在间隙内，阻塞）
+insert into news value(7,8);#（均在间隙外，成功）
+insert into news value(2,8);#（id在间隙内，number在间隙外，阻塞）
+insert into news value(4,8);#（id在间隙内，number在间隙外，阻塞）
+insert into news value(7,3);#（id在间隙外，number在间隙内，成功）
+--id无边缘数据，因为主键不能重复
+```
+
+结论：只要id（在where后面的）在间隙里（2,4,5）则不管number是多少都会阻塞
+
+### 死锁
+
+两个session互相等待对方的资源释放之后，才能释放自己的资源造成了死锁。
+
+```sql
+1、session1: begin;--开启事务未提交
+      --手动加行写锁 id=1 ，使用索引
+      update mylock set name='m' where id=1;
+2、session2：begin;--开启事务未提交
+--手动加行写锁 id=2 ，使用索引
+      update mylock set name='m' where id=2;
+     
+3、session1: update mylock set name='nn' where id=2; -- 加写锁被阻塞
+4、session2：update mylock set name='nn' where id=1; -- 加写锁会死锁，不允许操作
+ERROR 1213 (40001): Deadlock found when trying to get lock; try restarting
+transaction
+```
+
+mysql如果发现死锁，会中断造成死锁的事务，并回滚该事务。

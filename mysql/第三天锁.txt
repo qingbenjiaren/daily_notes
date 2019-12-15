@@ -28,4 +28,9 @@
 		
 		
 		InnoDB Storage Engine Architecture
-			
+		
+
+write ahead log:数据预写机制，数据库通过数据预写机制保证数据的完整性
+
+force log at commit:默认是1
+		
