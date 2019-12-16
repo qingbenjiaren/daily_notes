@@ -94,7 +94,55 @@ MySQL的默认值为1
 
 Double Write带给InnoDB存储引擎的是数据页的可靠性
 
-如上如所示，**Double Write由两部分组成，一部分是内存中的double write buffer，大小为2M，另一部分就是物理磁盘上共享表空间连续的128个页，大小也为2M。**在对缓冲
+如上如所示，**Double Write由两部分组成，一部分是内存中的double write buffer，大小为2M，另一部分就是物理磁盘上共享表空间连续的128个页，大小也为2M。**在对缓冲池的脏页进行刷新时，并不直接写磁盘，而是通过memcpy函数将脏页先复制到内存中double write buffer区域，之后通过double write buffer在分两次，每次1MB顺序的写入共享表空间的物理磁盘上，然后马上调用fsync函数，同步磁盘，避免操作系统缓冲写带来的问题。在完成double write页的写入后，再将double write buffer中的页写入到各个表空间文件中。如果操作系统在写入过程中发生了崩溃，在恢复过程中，InnoDB存储引擎可以从共享表空间中的double write中找到该页的一个副本，将其复制到表空间文件中，再应用重做日志。
+
+![](mysql事务.assets/MySQL-双写（double write）.png)
+
+#### CheckPoint:检查点
+
+检查点，表示脏页写入到磁盘的时机，所以检查点也就意味着脏数据的写入
+
+1. checkpoint的目的
+
+   1. 缩短数据库的恢复时间
+   2. buffer pool空间不够用时，将脏页刷新到磁盘
+   3. redolog不够用时，刷新脏页
+
+2. 检查点分类
+
+   1. sharp checkpoint
+
+      完全检查点，数据库正常关闭时，会触发把所有的脏页都写入到磁盘
+
+   2. fuzzy checkpoint
+
+      正常使用时，模糊检查点，部分页写入磁盘
+
+      - **master thread checkpoint:**以每秒或每十秒的速度从缓冲池的脏页列表中刷新一定比例的页回磁盘，这个过程是异步的。
+      - **flush_lru_list_checkpoint:**读取LRU(Least Recently Used)list，找到脏页，写入磁盘，最近最少使用
+      - **async/sync flush checkpoint:**  redo log file快满了，会批量的触发数据页回写，这个事件触发的时候又分为异步和同步，不可被覆盖的redolog占log file的比值：75% 异步，90% 同步，同步就是主线程直接操作。
+      - **dirty page too much checkpoint:**    默认脏页占比75%的时候，就会触发刷盘，将脏页写入磁盘。
+
+#### InnoDB磁盘文件
+
+##### 系统表空间和用户表空间
+
+![](mysql事务.assets/MySQL-数据文件.png)
+
+系统表空间（共享表空间）
+
+1. **数据字典（data dictionary）：**记录数据库相关信息
+2. **doublewrite write buffer：**解决部分写失败（页断裂）
+3. **insert buffer：**内存insert buffer数据，周期写入共享表空间，防止意外宕机
+4. **回滚段（rollback segment）**
+5. **undo空间：**undo页
+
+用户表空间（独立表空间）
+
+1. **每个表的数据和索引都会存在自己的表空间中**
+2. **每个表的结构**
+3. **undo空间：**undo页（需要设置）
+4. **doublewrite write buffer**
 
 
 
