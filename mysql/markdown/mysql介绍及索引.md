@@ -681,5 +681,141 @@ explain select * from tuser where id in(1,2);
 
 
 
+###### using Index condition
 
+索引下推
+
+```
+ELECT * FROM people
+  WHERE zipcode='95054'
+  AND lastname LIKE '%etrunia%'
+  AND address LIKE '%Main Street%';
+```
+
+people表中（zipcode，lastname，firstname）构成一个索引。
+
+**如果没有使用索引下推技术**，则MySQL会通过zipcode='95054'从存储引擎中查询对应的元祖，返回到MySQL服务端，然后MySQL服务端基于lastname LIKE '%etrunia%'和address LIKE '%Main Street%'来判断元祖是否符合条件。
+
+**如果使用了索引下推技术**，则MYSQL首先会返回符合zipcode='95054'的索引，然后根据lastname LIKE '%etrunia%'和address LIKE '%Main Street%'来判断索引是否符合条件。如果符合条件，则根据该索引来定位对应的元祖，如果不符合，则直接reject掉。
+
+### 索引失效分析
+
+#### 全值匹配我最爱
+
+```mysql
+explain select * from tuser where name='zhaoyun' and age=1 and sex='1';
+```
+
+#### 最佳左前缀法则
+
+##### 组合索引
+
+> 带头大哥不能死，中间索引不能断
+
+如果索引了多个列，要遵守最佳左前缀法则。指的是查询从索引的最左前列开始，并且不跳过索引中的列
+
+**正确的示例：**
+
+```mysql
+explain select * from tuser where name='zhaoyun' and age=1 and sex='1';
+```
+
+**错误的示例：**
+
+带头索引死（全失效）：
+
+```mysql
+explain select * from tuser where  age=1 and sex='1';
+```
+
+中间索引断（带头索引生效，其他索引失效）
+
+```mysql
+explain select * from tuser where name='zhaoyun' and sex='1';
+```
+
+#### 不要在索引上做计算
+
+```mysql
+#不要进行这些操作：计算、函数、自动/手动类型转换，不然会导致索引失效而转向全表扫描
+explain select * from tuser where loginname='melo123'
+#explain type 为 const,查询走唯一索引
+explain select * from tuser where loginname='melo'||'123';
+#explain type 为 ALL 查询走了全表扫描
+```
+
+#### 范围条件右边的列失效
+
+```mysql
+#不能继续使用索引中范围条件（between > < in 等）右边的列
+explain select * from tuser where name='asd' and age>20 and sex='1';
+#相当于从age开始，索引断开
+```
+
+#### 尽量使用覆盖索引
+
+```mysql
+#尽量使用覆盖索引（只查询索引的列），也就是索引和查询列一致，减少select *
+explain select * from tuser;
+#explain type 为 ALL
+explain select name,loginname from tuser;
+#explain type 为 ALL
+explain select name,age,sex from tuser;
+#explain type 为 index（覆盖索引）,直接查询索引树就可以得到全部列
+```
+
+#### 索引字段上不要使用不等
+
+```mysql
+#索引字段上使用(!= 或 <>)判断时，会导致索引失效而转向全表扫描
+#注：主键索引会使用范围索引，辅助索引会失效
+explain select * from tuser where id != 1;
+#explain type 为 range
+explain select * from tuser where loginname != 'melo123';
+#explain type 为 ALL
+```
+
+#### 主键索引字段上不可以判断null
+
+```mysql
+#主键字段上不可以使用null
+#辅助索引字段上使用is null 判断时，可使用索引
+explain select * from tuser where loginname is null;
+#explain type 为 ref
+#主键非空判断不走索引
+explain select * from tuser where id is not null;
+#explain type 为 ALL
+#非主键索引非空，使用range，但是主要三分之一的阈值
+```
+
+#### 索引字段使用like不以通配符开头
+
+```mysql
+#索引字段使用like以通配符开头（'%字符串'）时，会导致所以失效而转向全表扫描
+explain select * from tuser where name like '%o';
+#explain type 为 ALL
+explain select * from tuser where name like 'm%';
+#explain type 为 range
+```
+
+#### 索引字段不要使用or
+
+```mysql
+#组合索引字段间使用or时，会导致索引失效而转向全表扫描
+explain select * from tuser where name='asd' or age=23;
+#explain type 为 ALL
+#若是单个索引字段自己和自己or，使用range
+```
+
+### 索引优化口诀
+
+> 全值匹配我最爱，最左前缀要遵守；
+>
+> 带头大哥不能死，中间兄弟不能断；
+>
+> 索引列上少计算，范围之后全失效；
+>
+> LIKE百分写最右，覆盖索引不写*；
+>
+> 不等空值还有or，索引失效要少用。
 
