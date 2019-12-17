@@ -1,0 +1,4 @@
+Mybatis中${}存在的意义：
+	问题：${}可能会发生SQL注入，已经有了#{}为什么还要用${}
+	解释：${}能解决特定的问题，比如select id,name,age from student order by ${column}
+	无论根据谁排序都可以动态的变换，如果用了#{}就变成了 'xxxx'

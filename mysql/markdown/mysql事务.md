@@ -8,6 +8,12 @@
 
 事务用来管理DDL、DML、DCL操作，比如insert update delete语句，默认是自动提交。
 
+注：
+
+- **DDL：Data Definition Language**
+- **DML：Data Manipulation Language**
+- **DCL：Data Control Language**
+
 ## 事务的四大特性（ACID）
 
 1. Atomicity(原子性):构成事务的所有操作必须使一个逻辑单元，要么全部执行，要么全部不执行。

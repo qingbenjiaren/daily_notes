@@ -107,6 +107,18 @@ MDL(metaDataLock)元数据：表结构
 4、session2：Query OK, 0 rows affected (38.67 sec)  --修改完成
 ```
 
+## 下列命令自动提交事务
+
+下列命令自动的结束一个事务 (就好像你在执行这个命令之前，做了一个 COMMIT)： 
+
+1. **ALTER TABLE**
+2. **BEGIN**
+3. **CREATE INDEX**
+4. **DROP DATABASE**
+5. **DROP TABLE**
+6. **RENAME TABLE**
+7. **TRUNCATE**  
+
 ## 行级锁
 
 ### 行级锁介绍
@@ -272,7 +284,7 @@ insert into news value(7,3);#（id在间隙外，number在间隙内，成功）
 --id无边缘数据，因为主键不能重复
 ```
 
-结论：只要id（在where后面的）在间隙里（2,4,5）则不管number是多少都会阻塞
+**结论：只要id（在where后面的）在间隙里（2,4,5）则不管number是多少都会阻塞**
 
 ### 死锁
 
@@ -292,4 +304,4 @@ ERROR 1213 (40001): Deadlock found when trying to get lock; try restarting
 transaction
 ```
 
-mysql如果发现死锁，会中断造成死锁的事务，并回滚该事务。
+**mysql如果发现死锁，会中断造成死锁的事务，并回滚该事务。**
