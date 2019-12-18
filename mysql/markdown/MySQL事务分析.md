@@ -116,4 +116,31 @@ wiki上对MVCC的定义：
 
 让mvcc读历史版本
 
-![]()
+![](MySQL事务分析.assets/MVCC读.png)
+
+MVCC在MySQL中的实现依赖的是**undo log与read view**
+
+#### undoLog
+
+**InnoDB的行记录有三个隐藏字段：分别对应该行的rowid、事务号db_trx_id和回滚指针db_roll_ptr，其中db_trx_id表示最近修改的事务ID，db_roll_ptr指向回滚段中的undo log**
+
+根据行为的不同，undo log分为两种：insert undo log 和update undolog
+
+insert undo log：是在insert操作中产生的undo log。因为insert操作的记录支队事务本身可见，rollback在该事务中直接删除，不需要purge操作（purge Thread）
+
+update undo log：是update或delete操作中产生的undo log，因为会对已经存在的记录产生影响，roll back MVCC机制会找他的历史版本进行恢复。为了提供MVCC读机制，因此update undo log不能在事务提交时就进行删除，而是将事务提交时放到history list上，等待purge线程进行最后的删除操作。
+
+![](MySQL事务分析.assets/undolog的删除.png)
+
+![](MySQL事务分析.assets/undolog记录.png)
+
+#### 事务链表
+
+MySQL中的事务在开始到提交这段过程中，都会被保存到一个叫trx_sys的事务链表中，这是一个基本的链表结构：
+
+ct-trx ----> trx11 ----> trx 9 ------->trx6 -------->trx5 ------->trx3;
+
+事务链表中保存的都是还未提交的事务，事务一旦被提交，则会从事务链表中摘除。
+
+RR隔离级别下，在每个事务开始的时候，会将当前系统中的所有的活跃事务拷贝到一个列表中（read view）
+

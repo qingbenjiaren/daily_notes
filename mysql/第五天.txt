@@ -1,0 +1,29 @@
+组合索引下推
+slow log本身是影响性能的
+slow_query_log=ON
+long_query_time=3
+slow_query_log_file=/var/lib/mysql/slow-log2.log
+
+
+
+大字段（clob,blob）拆子表，实在要用的时候可以做异步加载
+
+不查和没有不一样
+
+limit 截断全表扫描，扫表还是扫了那么多，但是返回Server层只返回limit，如果是limit 99999998,2，需要把99999998都返回server层
+limit 99999998,2 很慢
+limit优化 走索引 where id > 99999998 limit 2或者用id排序，
+
+所以，深分页的情况最好是走索引
+
+selecr id from tuser;有可能不会走主键索引，因为mysql会去找最小的索引树，有可能走age索引树，并且不需要回表
+
+cardinality
+count(*) 找普通索引，找到最小的那颗索引树来遍历 包含空值（5.5以后走索引）
+count(字段) 走字段索引树，不包含空值
+count(1) 包含空值
+
+
+不适用内置函数，内置函数不走缓存
+
+学习mysql查看索引出来的列含义
