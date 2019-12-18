@@ -29,7 +29,7 @@ redo log写入磁盘时，必须进行一次操作系统的fsync操作，防止r
 
 ![](MySQL事务分析.assets/undo log.png)
 
-在事务执行的过程中，除了记录redo log，还会记录一定量的undo log。undo log记录了数据在每隔操作前的状态，如果事务执行过程中需要回滚，就可以根据undo log进行回滚操作。
+在事务执行的过程中，除了记录redo log，还会记录一定量的undo log。undo log记录了数据在每个操作前的状态，如果事务执行过程中需要回滚，就可以根据undo log进行回滚操作。
 
 ![](MySQL事务分析.assets/数据和回滚日志的逻辑存储结构.png)
 
@@ -53,5 +53,67 @@ undolog的完整性是靠redolog保证的
 
 
 
+![](MySQL事务分析.assets/undolog页结构.png)
 
+## 隔离性
 
+### 事务并发问题
+
+在事务的并发操作中可能会出现一些问题：
+
+- **丢失更新：**两个事务针对同一数据都发生修改操作时，会存在丢失更新的问题。
+- **脏读：**一个事务读取到另一个事务未提交的数据。
+- **不可重复读：**一个事务因读取到另一个事务已提交的update或者delete数据。导致对同一条记录读取两次以上的结果不一致。
+- **幻读：**一个事务因读取到另一个事务已提交的Insert数据。导致对同一张表读取两次以上的结果不一致。
+
+### 事务隔离级别
+
+- 四种隔离级别
+
+1. **Read uncommitted(读未提交)：**最低级别，任何情况都无法保证。
+
+2. **Read commited(RC,读已提交)：**可避免脏读的发生。
+
+3. **Repeatable read(RR,可重复读)：**可避免脏读、不可重复读的发生。
+
+   **（注意事项：InnoDB的RR还可以解决幻读，主要原因是Next-Key（Gap）锁，只有RR才能使用Next-key锁）**
+
+4. **Serializable（串行化）：**可避免脏读、不可重复读、幻读的发生。
+
+   **（由MVCC降级为Locking-Base CC）**
+
+### InnoDB的MVCC实现
+
+wiki上对MVCC的定义：
+
+> Multiversion concurrency control (MCC or MVCC), is a concurrency control method commonly used by database management systems to provide concurrent access to the database and in programming languages to implement transactional memory.
+
+#### 当前读和快照读 
+
+在MVCC并发控制中，读操作可以分为两类，**快照读**（snapshot read）与**当前读**（current read）。
+
+> -快照读，读取的是记录的可见版本（有可能是历史版本），不用加锁。（select）
+>
+> -当前读，读取的是记录的最新版本，并且当前读返回的记录，都会加锁，保证其他事物不会再并发修改这条记录。
+
+在一个支持MVCC并发控制的系统中，那些读操作是快照读？那些操作又是当前读呢？
+
+以MySQL InnoDB为例：
+
+**快照读：**简单的select操作，属于快照读，不加锁，读历史版本。
+
+**当前读：**特殊的读操作，insert/update/delete操作以及select... for update select ... lock in share mode，属于当前读，需要加锁。
+
+#### 非锁定读
+
+一致性非锁定读（consistent nonlocking read）是指InnoDB存储引擎通过多版本控制（MVCC）读取当前数据库中行数据的方式。
+
+如果读取的行正在执行DELETE或UPDATEcaozuo ,这时读取操作不会因此去等待行上的锁释放，相反的，InnoDB会去读取行的一个最新的可见版本快照。
+
+由undolog实现，undolog的作用：
+
+回滚
+
+让mvcc读历史版本
+
+![]()
