@@ -144,3 +144,44 @@ ct-trx ----> trx11 ----> trx 9 ------->trx6 -------->trx5 ------->trx3;
 
 RR隔离级别下，在每个事务开始的时候，会将当前系统中的所有的活跃事务拷贝到一个列表中（read view）
 
+RC隔离级别下，在每个语句开始的时候，会将当前系统中所有的活跃事务拷贝到一个列表中（read view）
+
+show engine innodb status,就能够看到事务列表。
+
+#### ReadView
+
+当前事务（读）能读哪个历史版本？
+
+ReadView是事务开启时当前所有事务的一个集合，这个类存储了当前Read View中最大的事务ID及最小的事务ID。
+
+当前活跃的事务列表
+
+ct-trx ----> trx11 ----> trx 9 ------->trx6 -------->trx5 ------->trx3;
+
+ct-trx 表示当前事务的id，对应上面的read view数据结构如下，
+
+```mysql
+read_view->creator_trx_id = ct-trx;
+read_view->up_limit_id = trx3; 低水位
+read_view->low_limit_id = trx11; 高水位
+read_view->trx_ids = [trx11, trx9, trx6, trx5, trx3];
+```
+
+low_limit_id是“高水位”，即当时活跃事务的最大id，如果读到row的db_trx_id >= low_limit_id，说明这些id在此之前（在当前事务开起前）的数据都没有提交，这些数据都不可见。
+
+```mysql
+if (trx_id >= view->low_limit_id) {
+	return(FALSE);
+}
+注：readview 部分源码
+```
+
+up_limit_id是“低水位”，即当活跃事务列表的最小事务id，如果row的db_trx_id<up_limit_id说明这些数据在事务创建的id时都已经提交，如注释中的描述，这些数据均可见。
+
+```mysql
+if (trx_id < view->up_limit_id) {
+	return(TRUE);
+}
+```
+
+row的db_trx_id在low_limit_id和up_limit_id之间，则查找该记录的db_trx_id是否在自己事务的read_view->trx_ids列表中，如果在则记录的当前版本不可见，否则该记录的当前版本可见。
