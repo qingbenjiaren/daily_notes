@@ -1,0 +1,16 @@
+主从复制：master slave（读写分离） 主：全部写和部分读    从：全部读
+IO thread 去bin log读日志写到relay log 
+另外一个线程SQL TRHEAD 去读relay log执行sql
+
+
+
+代理实现读写分离 mysql-proxy
+mycat也可以
+
+MYSQL的高可用还是依赖于mycat
+
+
+工具CRT
+
+
+NEWSQL（分布式关系型数据库）TiDB = MySQL + NOSQL
