@@ -1,0 +1,32 @@
+执行Git命令时出现各种 SSL certificate problem 的解决办法
+比如我在windows下用git clone gitURL
+
+就提示  SSL certificate problem: self signed certificate
+
+这种问题，在windows下出现得频率高些。我估计主要是git本身就是基于linux开发的，在windows上，容易缺失一些环境。
+
+参考了一些文章，解决方法其实就是“直接不管ssl证书的事儿”-_-|||
+
+方法如下：
+
+1.创建临时环境变量：
+
+windows上命令行输入：
+
+set GIT_SSL_NO_VERIFY=true git clone  
+Linux下：
+
+env GIT_SSL_NO_VERIFY=true git push  
+这里clon可以根据需要换成其他的git命令。
+
+也可以把临时环境变量变为永久的，反正永远不验证ssl证书也没什么风险吧。。。
+
+ 
+
+2.用git自带的配置命令：
+
+git config --global http.sslVerify false  
+
+ 
+
+问题解决。
