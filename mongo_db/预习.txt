@@ -1,0 +1,83 @@
+Mongodb是一个分布式文件存储的NoSQL数据库，它由C++编写，主要针对web应用提供可扩展高可用
+Mongodb是最像关系型数据库的一个NoSQL数据库，它在某些方面可以替代Mysql
+支持索引
+
+
+SQL术语/概念			MongoDB术语/概念		解释/说明
+database				database				数据库
+table					collection				数据库表/集合
+row						document				数据库行/文档
+column					field					数据字段/域
+index					index					索引
+table joins										表连接，mongo不支持
+primary key				primary key				主键，MongoDB自动将_id字段设置为主键
+
+数据库
+	
+	
+集合
+	集合就是MongoDB文档组
+	集合存在于数据库中，集合没有固定的结构，这意味着你对集合可以插入不同格式和类型的数据，但是通常情况我们插入集合
+	的数据都会有一定的关联性。
+	一个Collection中所有filed是collection中所有document中包含的field的并集
+	
+
+MongoDB数据类型
+	数据类型		说明		解释/说明		举例
+	String			字符串		UTF-8			{"V":"KKB"}
+	Integer			整型						{"V":1}
+	Boolean			布尔值						{"V":true}
+	Double										{"V":3.14}
+	ObjectId		对象ID
+	Array			数组
+	Timestamp		
+	Object			内嵌文档
+	Null			空值	
+	Date			日期
+	Regular			
+	Code
+	
+
+副本集与分片混合部署
+	三个角色
+		实际数据节点：
+			由多个副本集组成
+				相同的副本集节点中存储的数据是一样的（分为，主、从、总裁（非必须））
+					这种设计方案：数据备份，读写分离，高性能，高可用
+				不同的不一样
+					这种设计方案，主要是为了解决高可扩展的问题，理论上可以无限扩展
+				
+				每一个副本集可以看成一个shard（分片），多个副本集共同组成了一个逻辑上的大数据节点
+				通过shard上面进行进行逻辑分块trunk（分区）
+		路由接入节点：
+				
+		存储配置存储节点
+	
+副本集集群
+	多个节点的数据完全一样，只是角色不一样，写只写主，然后由主去同步从
+	
+	
+	仲裁节点：
+	数据节点：
+
+
+MongoDB的应用场景和不适用场景
+
+适用场景
+	更高的写入负载
+
+	高可用性
+
+	数据量很大或者未来会变得很大（日志）
+
+	基于位置的数据查询（地图定位）
+
+	表结构不明确，且数据在不断变化
+	
+	没有DBA支持
+	
+不适用场景
+	非关系型
+	不支持事务（ACID）
+	复杂查询
+	
