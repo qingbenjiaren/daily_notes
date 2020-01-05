@@ -1,0 +1,68 @@
+RDBMS
+
+
+mongodb：内置文档
+
+每行最大存储量16M。如果超过16M，则可以存储成GridFS形式
+
+MongoDB Wiredtiger存储引擎实现原理
+MongoDB2.3后默认采用WiredTiger存储引擎
+
+	Transport layer
+	
+	写请求
+		WiredTiger
+		WAL(Write Ahead Log)
+		page
+		Copy on write
+		
+		Journaling
+			
+		
+	tips：mongoDB里的数据最好是放一些不太重要（非核心数据）的数据，核心关键数据还是放到关系型数据库	
+		  因为mongodb对事务的支持不如关系型数据库
+
+
+MongoDB集群
+	MongoDB的高可用
+		核心业务99.99%可用，一年宕机时间不超过52分钟（一个季度不超过13分钟）
+		mongoDB的集群部署方案有主从部署，副本集（主备）部署，分片部署，非本机与分片混合部署。
+		
+	主从复制原理
+		MongoDB Oplog是MongoDB Primary和Secondary在复制建立期间和建立完成之后的复制介质，就是Primary中所有写入操作都会记录到MongoDB Oplog中
+		
+		
+		主机对外，从机对内，官方不推荐
+		
+		从机：rs.slaveok()
+		
+		主机宕机，从机不能变成主，不能实现高可用
+		
+	副本集：
+		可以做负载，
+		节点node1配置
+			replSet=rs001
+		节点node2配置
+			replSet=rs001
+		节点node3配置
+			replSet=rs001
+		
+		
+		仲裁节点：不存数据
+		
+		优点：
+			主机宕机，仲裁节点会选新的节点当主。180秒后，重新投票
+		缺点：如果仲裁节点宕机，主从不能切换
+		
+		若没有仲裁节点，主从可切换
+		
+		
+		
+		
+		
+		
+集群的配置可持久化，每次重启不用重新配置
+			
+		
+	
+	
