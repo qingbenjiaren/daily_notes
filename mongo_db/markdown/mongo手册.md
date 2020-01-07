@@ -14,7 +14,7 @@
 
 格式化打印
 
-```
+```sql
 db.myCollection.find().pretty()
 ```
 
@@ -24,7 +24,7 @@ db.myCollection.find().pretty()
 
 ### 自定义提示符
 
-可以通过在mongo shell中设置变量prompt的值来修改提示符的内容。prompt变量可以存储字符串以及JavaScript代码。也可以在.mongorc.js文件中增加提示符的逻辑操作来设置每次启动mongo shell时的提示符。
+可以通过在mongo shell中设置变量**prompt**的值来修改提示符的内容。**prompt**变量可以存储字符串以及JavaScript代码。也可以在**.mongorc.js**文件中增加提示符的逻辑操作来设置每次启动mongo shell时的提示符。
 
 #### 自定义提示符展示操作数
 
@@ -126,7 +126,7 @@ MongoDB中所有的写操作在单一文档层级上是原子的。
 
 #### insertOne
 
-```
+```sql
 db.users.insertOne(
    {
       name: "sue",
@@ -138,7 +138,7 @@ db.users.insertOne(
 
 insertOne()返回一个结果文档，该结果文档中列举了插入文档的“_id”字段值。
 
-```
+```sql
 {
         "acknowledged" : true,
         "insertedId" : ObjectId("5e11df35b94752ad750b3b6a")
@@ -147,7 +147,7 @@ insertOne()返回一个结果文档，该结果文档中列举了插入文档的
 
 #### insertMany()
 
-```
+```sql
 db.users.insertMany(
    [
      { name: "bob", age: 42, status: "A", },
@@ -173,7 +173,7 @@ MongoDB提供了`db.collection.find()`方法从集合中读取文档。
 
 #### 示例集合
 
-```
+```sql
 db.users.insertMany(
   [
      {
@@ -265,7 +265,7 @@ db.users.insertMany(
 
 #### 选择集合中所有文档
 
-> ```
+> ```sql
 > db.users.find( {} )
 > db.users.find()
 > ```
@@ -276,7 +276,7 @@ db.users.insertMany(
 
 #### 使用查询操作符指定条件
 
-> ```
+> ```sql
 > db.users.find( {status :{$in:["P","D"]}} )
 > ```
 
@@ -286,7 +286,7 @@ db.users.insertMany(
 
 复合查询可以在集合文档的多个字段上指定条件。隐含的，一个逻辑的AND连接词会连接符合查询的子句，使得查询选出集合中匹配所有条件的文档
 
-> ```
+> ```sql
 > db.users.find( {status:"A",age:{$lt:30}} )
 > ```
 
@@ -358,7 +358,7 @@ db.users.insertMany(
 
 下面的例子查询 `finished` 数组至少包含一个大于 ([`$gt`](http://www.mongoing.com/docs/reference/operator/query/gt.html#op._S_gt)) `15` 并且小于 ([`$lt`](http://www.mongoing.com/docs/reference/operator/query/lt.html#op._S_lt)) `20` 的元素的文档：
 
-```
+```sql
 db.users.find( { finished: { $elemMatch: { $gt: 15, $lt: 20 } } } )
 ```
 
@@ -366,7 +366,7 @@ db.users.find( { finished: { $elemMatch: { $gt: 15, $lt: 20 } } } )
 
 下面的例子查询 `finished` 数组包含以某种组合满足查询条件的元素的文档;例如,一个元素满足大于 `15`的条件并且有另一个元素满足小于 `20` 的条件,或者有一个元素满足了这两个条件：
 
-```
+```sql
 db.users.find( { finished: { $gt: 15, $lt: 20 } } )
 ```
 
