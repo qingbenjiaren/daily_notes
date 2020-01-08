@@ -94,6 +94,93 @@ Zookeeper简介
 		
 		三种模式
 		
+		四种状态
+			zk集群中的每一台主机，在不同的阶段会处于不同的状态。每一台主机具有四种状态。
+ 			LOOKING：选举状态
+ 			FOLLOWING：Follower的正常工作状态
+ 			OBSERVING：Observer的正常工作状态
+			LEADING：Leader的正常工作状态
+		
+		
+		FAST PAXOS算法中Leader是唯一的提案者，为什么follower还是比较maxN？
+			ABA问题，用节点间的递归同步
+			详见zk更新同步算法
+		
+		Observer的数量问题
+			并不是越多越好，虽然不会增加事务和选举的压力
+			但是其需要从leader同步数据，
+			若observer很多，会增加leader的压力
+			将follower同步完成，会结束observer的同步
+			Leader中存在两个关于Observer的列表：all（包含所有Observer）与service（包含与Leader同步过数据的Observer）
+ 			service列表是动态变化的。对于没有进入到service列表中的Observer，其会通过心跳与Leader进行连接，一旦连接成功，马上就会从Leader同步数据，同步完成后向Leader发送ACK。Leader在接收到其ACK后会将其添加到service列表。
+ 			若客户端连接上了不在service列表中的Observer，那么这个Observer是不能提供服务的。因为该Observer的状态不是Observering。这个状态是通过Observer与Leader间的心跳来维护的。
+ 			Leader中对于Follower也同样存在两个列表：all与service。其功能与Observer的相似。但不同点是，若Leader收到的Follower同步完成的ACK数量没有过半，则认为同步失败，会重新进行广播，让Follower重新进行同步。
+			
+			写操作少，读操作很多很多的业务场景下，可以
+			设置合理多的observer，
+			对于写操作多的情况，设置合理少的Observer
+			
+		恢复模式的三个原则
+			Leader的主动出让原则
+				若集群中Leader收到的Follower心跳数量没有过半，此时Leader会自认为自己与集群的连接已经出现了问题，其会主动修改自己的状态为LOOKING，去查找新的Leader。为了防止集群出现脑裂。
+				而其它Server由于有过半的主机认为已经丢失了Leader，所以它们会发起新的Leader选举，选出一个新的Leader。
+				一个集群出现两个Leader叫脑裂
+			
+			已经被处理过的消息不能丢
+				Leader的更新还未同步到所有Follwer，此时Leader挂，
+				再进行Leader选举的时候，会从maxN最大的Follower中选出新的
+				Leader，此时，在进行同步算法，初始化同步
+				
+			被丢弃的消息不能再现原则
+			
+				Leader某个事务修改了还未同步到Follower，此时Leader挂了，
+				原来的Followers投票选举了新的Leader，原先的Leader重启后变成
+				Follower，此时再去同步事务，直到遇到与新leader事务ID相同的事务后，
+				递归同步相同事务+1的事务，之前的应该被丢弃的消息会被覆盖
+				
+		Leader选举
+			myid
+				也称为serverId,这是zk集群中服务器的唯一标识
+			逻辑时钟
+			
+		
+		高可用集群的容灾
+			
+			容灾设计方案
+				主机台数问题
+					基数台节省资源
+					偶数台提高吞吐量
+				
+				三机房部署
+				
+					考虑机房、楼宇以及地域，或许还有星球呵呵
+					每个机房的节点数量少于一半
+						任何一个机房停电或者断网，整个集群仍然可用
+					
+					若是双机房部署，则其中一个机房的节点数量肯定过半，所以
+					这个机房如果出现故障，整个集群不可用
+				
+				CAP定理
+					在一个分布式系统里，Consistency(一致性)、Availability（可用性）、
+					Partition tolerance(分区容错性)，三者不可兼得。
+					
+					一致性：分布式系统中多个主机之间是否能保证数据一致。
+					可用性：系统提供的服务必须一直处于可用状态。即对于用户
+					的每一个请求，系统总是可以在有限的时间内对用户做出相应。
+					分区容错性：分布式系统在遇到任何网络分区故障时，仍能够保证对外提供满足一致性和
+					可用性的服务
+					
+					如果要保证一致性：就得牺牲可用性，因为在数据同步期间，不对外服务
+					若要保证可用性：那么在同步期间，有可能读到的是未同步的数据
+					
+				Base理论
+					BASE是Basically Available（基本可用）、Soft state（软状态）和Eventually consistent（最终一致性）三个短语的简写。是CAP定理对于一致性与可用性权衡的结果。
+					BASE理论的核心思想是：即使无法做到强一致性，但每个系统都可以根据自身的业务特点，采用适当的方式来使系统达到最终一致性。
+					
+					
+					
+			
+		
 			
 				
 		
