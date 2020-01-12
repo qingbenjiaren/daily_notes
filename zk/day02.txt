@@ -1,0 +1,48 @@
+Time.currentElapsedTime
+Time.naioTime
+票箱是hashmap，妙啊妙
+	你发给我，我手里有你的投票，我觉得有更好的票，我会发给你，你会回应我，同时，我的票箱里，你投的票就更新了
+	
+如果我断了，不要着急，别人会一直给我发，等我连上了，我收到投票，再反馈给他们，若我挂期间已经选出来了，我直接认主就是
+
+
+zk选举源码，分成5部分
+	STEP 1：创建选举对象，做选举前的初始化工作
+		jmx: java management extensions Oracle提供的一种分布式应用程序监控技术
+			常用获取时间：
+				system.currentTimeMillis()，该方法存在风险，因为这个方法是获取服务器时间
+				system.currentElapsedTime():单位纳秒，虚拟机启动的时候，记录了一个时间原点，用这个方法取得时间，是相对于虚拟机的启动原点计算出来的，所以在虚拟机
+				启动以后，用这个方法获取的时间，实际上和系统时间是无关的，这是JDK1.5开始就有的方法，以后代码中尝试使用这个时间
+				阅读优秀框架或软件的源码，可以学习别人的代码编写方式
+		//recvset:receive set 用来存放来自于外部server的投票信息，相当于票箱
+		//key为选票的透出者的server id
+		//value 选票
+		//该map的一个entry对象就表示一次投票
+		HashMap<Long, Vote> recvset = new HashMap<>();
+		
+		//out of election 该集合中存放的是非法选票
+		//即状态不是looking的server投出的选票
+		HashMap<Long, Vote> outofelection = new HashMap<>();
+		//notification timeout
+		int notTimeout = finalizeWait;
+		
+		
+	STEP 2：将自己作为初始leader投出去
+		逻辑时钟增一
+		
+		//更新自己的推荐信息
+		//三个参数,先把参数搞清除
+		//getInitId():点前server的id
+		// getInitLastLoggedZxid():当前server最后记录的ZXID，即最大的zxid
+		//getPeerEpoch():当前server的epoch，即刚挂了的leader的epoch
+		updateProposal();
+		
+		
+	STEP 3：验证自己与大家的选票
+		投票者，应该有投票权
+		被投票者，应该有选举权
+		
+	STEP 4：判断本轮选举是否应该结束
+		
+	STEP 5：无需选举的情况
+		
