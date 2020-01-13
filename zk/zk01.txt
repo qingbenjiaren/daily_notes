@@ -1,0 +1,39 @@
+CAP遵循：CP
+Leader选举
+	Paxos
+	
+	三类角色
+
+		Leader:
+		Follower:
+		Observer:
+		
+		
+		如果Follower设置太多，就会出现人多意见多的问题，提案投票的过程就会变得复杂
+		所以为了提高服务能力，同时不影响集群的沟通效率，可以设置observer
+		observer不参与投票和选举
+		
+		
+		同时：follower和observer都称为learner
+		Learner：学习者，即要从Leader中同步数据的Server，即Follower与Observer。
+		Learner = Follower + Observer
+			
+		follower和leader都称为particpaint
+		QuorumServer：QuorumPeer，Participant，法定服务器，法定主机，参与者。在集群正常服务状态下，具有表决权的服务器称为QuorumServer，或QuorumPeer；在Leader选举过程中，具有选举权与被选举权的服务器，称为Participant。
+		QuorumServer = Leader + Follower = Participant
+		
+	三个数据
+		zxid 64位长度的Long类型，epoch+xid
+		epoch:年号
+		xid：事务ID，是一个流水号
+		
+	始终状态
+		LOOKING
+		FOLLOWING
+		LEADING
+		OBSERVING
+	leader选举
+		myid
+		逻辑时钟：epoch
+		
+		
