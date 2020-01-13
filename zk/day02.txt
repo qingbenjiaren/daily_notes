@@ -11,9 +11,16 @@ zk选举源码，分成5部分
 		jmx: java management extensions Oracle提供的一种分布式应用程序监控技术
 			常用获取时间：
 				system.currentTimeMillis()，该方法存在风险，因为这个方法是获取服务器时间
-				system.currentElapsedTime():单位纳秒，虚拟机启动的时候，记录了一个时间原点，用这个方法取得时间，是相对于虚拟机的启动原点计算出来的，所以在虚拟机
+				Time.currentElapsedTime():单位毫秒，虚拟机启动的时候，记录了一个时间原点，用这个方法取得时间，是相对于虚拟机的启动原点计算出来的，所以在虚拟机
 				启动以后，用这个方法获取的时间，实际上和系统时间是无关的，这是JDK1.5开始就有的方法，以后代码中尝试使用这个时间
 				阅读优秀框架或软件的源码，可以学习别人的代码编写方式
+				public static long currentElapsedTime() {
+					/**
+					* Returns the current value of the running Java Virtual Machine's
+					* high-resolution time source, in nanoseconds.
+					*/
+					return System.nanoTime() / 1000000;
+				}
 		//recvset:receive set 用来存放来自于外部server的投票信息，相当于票箱
 		//key为选票的透出者的server id
 		//value 选票
