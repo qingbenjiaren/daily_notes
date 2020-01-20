@@ -69,11 +69,22 @@ Watcher机制
 		create -e /china/aaa A
 		create -e /china/bbb B
 		create -e /china/ccc C
+		当创建临时节点的客户端关闭时，临时节点自动删除
 	节点状态
 		get
 		持久
 		临时
 		版本
+			cZxid: Create Zxid表示当前节点被创建时的事务ID
+			ctime: Create time
+			mZxid: Modified Zxid
+			mtime:
+			pZxid: 表示当前znode的子节点列表最后一次被修改时的事务ID
+			cversion:Children Version 表示子节点的版本号。该版本号用于充当乐观锁
+			dataVersion:表示当前znode数据的版本号。该版本号用于充当乐观锁。
+			ephemeralOwner：若当前节点是持久节点，值为0.若是临时节点，则是创建该临时节点的会话SessionID
+			dataLength:当前znode中存放的数据的长度
+			numChildren：当前znode锁包含的子节点的个数
 	修改
 		set /china/shenzhen sz666
 	删除
