@@ -1,0 +1,102 @@
+zookeeper录播资料整理
+	ACL简介
+		ACL是一种细粒度的权限管理策略，可以针对
+		任意用户与组进行细粒度的权限控制。zk利用ACL控制
+		znode节点的访问权限，如节点数据读写、节点创建
+		、节点删除、读取子节点列表、设置节点权限等
+		UGO, User Group Others，是一种粗粒度的权限管理策略
+		
+		
+	zk的ACL维度
+		node与子node之间是“挂载”关系，不是包含关系
+		A 授权策略scheme
+			授权策略用于确定权限验证过程中使用的检验策略
+			简单来说就是，通过什么来验证权限，或某个客户端要访问某个借点，系统
+			如何验证其身份
+			
+			IP：根据ip地址进行权限验证
+			digest：根据用户名密码进行验证。明文和密文都性
+			world：对所有用户不做任何验证
+			super：超级用户可以对任意借点进行任意操作
+			
+		B 授权对象
+		
+			授权对象指的是权限赋予的用户，不同的授权策略具有不同类型的授权对象
+			
+			IP:授权对象是IP地址
+			digest：授权对象是用户名+密码
+			world:其授权对象只有一个，即anyone。
+			Super:与digest相同，授权对象是用户名和密码
+			
+		C 权限 Permission
+			
+			权限指的是通过验证的用户可以对znode执行的操作。
+			有5种权限，不过zk可以支持自定义权限
+			
+			c:Create 允许授权对象对当前节点下创建子借点
+			d:Delete 允许授权对象删除当前节点。
+			r:Read 允许授权对象读取当前节点的数据内容，及子节点列表
+			w:write 允许授权对象修改当前节点的数据，及子节点列表
+			a:Acl 允许授权对象对当前节点进行ACL相关的设置
+			
+Watcher机制
+	zk通过watcher机制实现了发布、订阅模式
+	
+	（1）工作原理
+		见processon
+		
+	（2）watcher事件
+	
+	（3）watcher特性
+			
+			一次性：一旦一个watcher被触发，zk就会将其从客户端的WatcherManager中删除
+					服务端也会删除，会出现消息丢失，watcher刚删除，服务端又改变
+					zk的watcher机制不适合监听变化频繁的场景
+			串行性：对同一个节点的同一种类型（同一个事件）的watcher，上一个没执行完，下一个不能创建
+					KAFKA消息变化频繁
+			轻量级：真正传递给server的是一个简易版的watcher，回调逻辑存放在客户端，没有在服务端
+			
+客户端命令
+	连接客户端
+		zkcli
+	查看节点
+		ls
+	创建永久节点
+		create /china 999
+	创建永久顺序节点
+		create -s /china/beijing bj
+	创建临时节点
+		create -e /china/aaa A
+		create -e /china/bbb B
+		create -e /china/ccc C
+	节点状态
+		get
+		持久
+		临时
+		版本
+	修改
+		set /china/shenzhen sz666
+	删除
+		delete /china/guangzhou
+		有子节点就不能删
+	
+	ACL
+		getAcl
+		addauth digest zs:123
+		setAcl /china auth:zs:123:cdrwa
+		权限不向下访问，可以访问该节点的子节点
+	
+ZKClient客户端
+	API演示
+	
+	代码演示
+		（1）创建工程
+			
+		（2）代码
+		
+	
+		
+	
+			
+		
+		
