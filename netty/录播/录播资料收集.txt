@@ -1,0 +1,23 @@
+NIO网络编程框架
+	Netty入门
+		官网简介
+			Netty is an asynchronous event-driven network application framework 
+			for rapid development of maintainable high performance protocol servers & clients.
+			Netty is a NIO client server framework which enables quick and easy development of network applications such as protocol servers and clients. It greatly simplifies and streamlines network programming such as TCP and UDP socket server.
+			Netty has been designed carefully with the experiences earned from the implementation of a lot of protocols such as FTP, SMTP, HTTP, and various binary and text-based legacy protocols. As a result, Netty has succeeded to find a way to achieve ease of development, performance, stability, and flexibility without a compromise.
+		
+		谁在使用Netty
+			Dubbo,zk,RocketMQ,ElasticSearch,Spring5,GRpc,Spark
+			等大型开源项目都在使用Netty作为底层通讯框架
+		
+		Netty的核心概念
+			Channel
+				对Socket的封装，其包含了一组API，大大简化了直接与Socket进行操作的复杂性
+			
+			EventLoopGroup
+			
+	TCP的拆包与粘包
+	
+	Netty高级应用
+	
+	Netty源码分析
