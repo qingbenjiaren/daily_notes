@@ -1,0 +1,64 @@
+Dubbo
+Dubbo是一个被国内很多互联网公司广泛使用的开源分布式微服务框架，
+即使从国际视野来看应该也是一个非常全面的SOA基础框架。作为一个重要的技术
+研究课题，当当网根据自身的需求，为DUbbo实现了一些新的功能，并将
+其命名为Dubbox（即 Dubbo eXtenslons）
+
+Dubbo是什么？
+核心部分包含：
+	1：远程通讯：提供对多种基于长连接的NIO框架抽象封装，包括多种线程模型。
+	序列化，以及“请求-相应”模式的信息交换方式
+	2：集群容错：提供基于接口方法的透明远程过程调用，包括多协议支持，
+	以及软负载均衡，失败容错，地址路由，动态配置等集群支持。
+	3：自动发现：基于注册中心目录服务，使服务消费放能动态的查找服务
+	提供方，是地址透明，使服务提供方可以平滑增加或减少机器。
+Dubbo能做什么？
+	1：透明化的远程方法调用，就像调动本地方法一样调用远程方法，只需要简单
+	配置，没有任何API侵入
+	2：软负载均衡及容错机制，可在内网替代F5等硬件负载均衡器，降低成本，减少节点。
+	3：服务自动注册与发现，不在需要写死服务提供方地址，注册中心基于接口名查询
+	服务提供者的IP地址，并且能够平滑添加或删除服务提供者。
+	4：Dubbo采用全Spring配置方式，透明化接入应用，对应用没有任何API侵入，
+	只需要Spring加载Dubbo的配置即可，Dubbo基于Spting的Schema扩展进行加载。
+	
+	
+									Registry
+									
+	                Consumer						Provider
+													Container
+									
+									Moniter
+									
+	Provider:暴露服务的服务提供方
+	Consumer：调用远程服务的服务消费方
+	Registr：服务注册与发现的注册中心
+	Moniter：统计服务的调用次数和时间等监控
+	Container：容器
+	
+	zookeeper安装：
+	下载
+	解压
+	环境变量配置（zookeeperhome/bin）
+	cd zookeeper/conf/
+	mv zoo_sample.cfg zoo.cfg
+	vim zoo.cfg
+		修改dataDir=/解压目录/data
+		(三个节点)
+		server.0=192.168.1....:2888:3888
+		server.1=192.168.1....:2888:3888
+		server.2=192.168.1....:2888:3888
+		
+	mkdir data
+	vim myid 0
+	vim myid 1
+	vim myid 2
+	
+	zkServer.sh start
+	zkServer.sh ststus
+	zkCli.sh
+	
+	
+	
+
+	
+	

@@ -314,7 +314,7 @@ Reactor包含如下角色：
 > 1. IO多路复用, 是找一个宿管大妈来帮你监视下楼的女生, 这个期间你可以些其他的事情. 例如可以顺便看看其他妹子,玩玩王者荣耀, 上个厕所等等. IO复用又包括 select, poll, epoll 模式. 那么它们的区别是什么? 
 >
 > 1.  select大妈 每一个女生下楼, select大妈都不知道这个是不是你的女神, 她需要
->   一个一个询问, 并且select大妈能力还有限, 最多一次帮你监视1024个妹子 
+>     一个一个询问, 并且select大妈能力还有限, 最多一次帮你监视1024个妹子 
 > 2. poll大妈不限制盯着女生的数量, 只要是经过宿舍楼门口的女生, 都会帮你去问是不是你女神 
 > 3. epoll大妈不限制盯着女生的数量, 并且也不需要一个一个去问. 那么如何做呢epoll大妈会为每个进宿舍楼的女生脸上贴上一个大字条,上面写上女生自己的名字, 只要女生下楼了, epoll大妈就知道这个是不是你女神了, 然后大妈再通知你.
 >
@@ -427,3 +427,60 @@ void UserEventHandler::handle_event(){
 
 用户需要重写EventHandler的handle_event函数进行读取数据、处理的工作，用户线程只需要将自己的EventHandler注册到Reactor即可。Reactor中handle_event事件循环的伪代码如下
 
+```java
+Reactor::handle_events(){
+    while(1){
+        sockets = select();
+        for(socket in sockets){
+            get_event_handler(socket).handle_event();
+          }
+    }
+}
+```
+
+事件循环不断地调用select获取被激活的socket，然后根据获取socket对应的eventHandler，执行器handle_event函数即可。
+
+IO多路复用是最常使用的IO模型，但是其异步程度还不够“彻底”，因为它使用了会阻塞线程的select系统调用，因此IO多路复用值能称为异步阻塞IO，而非真正的异步IO。
+
+## 异步IO
+
+真正的异步IO需要操作系统更强的支持。在IO多路复用中，事件循环将文件句柄的状态事件通知给用户线程，由用户线程自信读取数据，处理数据。而在异步IO模型中，当用户线程收到通知时，数据已经被内核读取完毕，并放在了用户线程指定的缓冲区内，内核在IO完成后通知用户线程直接使用即可。
+
+**异步IO模型使用了Proactor设计模式实现了这一机制**
+
+![](IO多路复用.assets/异步IOProactor.png)
+
+如图：异步IO操作，用户线程直接使用内核提供的异步IO API发起read请求，且发起后立即返回，继续执行用户线程代码，不过此时用户线程已经将调用的AsynchronousOperation和CompletionHandler注册到内核，然后操作系统开启独立的内核线程去处理IO操作。当read请求的数据到达时，由内核负责读取socket中的数据，并写入用户指定的缓冲区中，最后内核将read的数据和用户线程注册到CompletionHandler分发给内部Proactor，Proactor将IO完成的信息通知给用户线程（一般通过调用用户线程注册的完成时间处理函数），完成异步IO，用户线程使用异步IO模型的伪代码描述为：
+
+```java
+void UserCompletionHandler::handle_event(buffer){
+    process(buffer)
+}
+{
+    aio_read(socket.new UserCompletionHandler);
+}
+```
+
+用户需要重写CompletionHandler的handle_event函数进行处理数据的工作，参数buffer表示Proactor准备好的数据，用户线程直接调用内核提供的异步IO API，并将重写的CompletionHandler注册即可。
+
+相比于IO多路复用模型，异步IO并不十分常用，不少高性能并发服务程序使用IO多路复用模型+多线程任务处理的架构基本可以满足需，况且目前操作系统对异步IO的支持并非特别完善，更多的是采用IO多路复用模型模拟异步IO的方式（IO事件触发时不直接通知用户线程，而是将数据读写完毕后放到用户指定的缓冲区中。）java7之后已经支持了异步IO，感兴趣的读者可以尝试使用。
+
+
+
+# Redis IO多路复用技术以及epoll实现原理
+
+redis是一个单线程却性能非常好的内存数据库，主要用来作为缓存系统。redis采用网络IO多路复用技术来保证在多连接的时候，系统的高吞吐量。
+
+##  为什么Redis中要使用IO多路复用
+
+首先，Redis是跑在单线程中的，所有的操作都是按照顺序线性执行的，但是由于读写操作等待用户输入或输出都是阻塞的，所以IO操作在一般情况下往往不能直接返回，这会导致某一文件的IO阻塞导致整个进程无法对其他客户提供服务，而IO多路复用就是为了解决这个问题而出现的。
+
+select，poll，epoll都是IO多路复用机制。
+
+**redis的io模型主要是基于epoll实现的，不过它也提供了select和kqueue的实现，默认采用epoll**
+
+那么epoll到底是个什么呢？
+
+> 设想一下如下场景：
+>
+> 有100万个客户端同时与一个服务器进程保持着TCP连接，而每一时刻，通常只有几百上千个TCP连接时活跃的。如何实现这样的高并发？

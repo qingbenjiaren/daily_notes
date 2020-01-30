@@ -1,0 +1,81 @@
+Executor框架
+为了更好的控制多线程，JDK提供了一套线程框架Executor
+
+工厂类：Executors,可以创建特定功能的线程池
+Executors创建线程的方法：
+	newFixedThreadPool()方法，该方法返回一个固定数量的线程池。该方法的线程数始终不变，
+	当有一个任务提交时，若线程池中空闲，则立即执行，若没有，则会被暂缓在
+	一个任务队列中等待有空闲的线程去执行。
+	
+	newSingleThreadPool()方法，创建一个线程的线程池，若空闲则立即执行，若没有空闲线程，则暂缓
+	
+	newCachedThreadPool()方法，返回一个可根据实际情况调整线程个数的线程池，不限制最大的线程数量，
+	若有任务，则创建线程，若无任务则不创建线程。如果没有任务则线程在60s后自动回收。
+	
+	newScheduledThreadPool()方法，该方法返回一个ScheduldExecutorService对象,
+	但该线程池可以指定线程数量
+	
+	
+	--------------------------
+	spring家族
+	batch
+	mvc
+	quartz = Schedule
+	security -shiro
+	jpa jdbcTemplate
+	cache(@Cacheable)
+	jms = > activemq rabbitmq
+	boot cloud
+	--------------------------
+	参考自定义线程池得介绍
+ThreadPoolExecutor构造函数
+ /**
+     * Creates a new {@code ThreadPoolExecutor} with the given initial
+     * parameters and default thread factory and rejected execution handler.
+     * It may be more convenient to use one of the {@link Executors} factory
+     * methods instead of this general purpose constructor.
+     *
+     * @param corePoolSize the number of threads to keep in the pool, even
+     *        if they are idle, unless {@code allowCoreThreadTimeOut} is set
+     * @param maximumPoolSize the maximum number of threads to allow in the
+     *        pool
+     * @param keepAliveTime when the number of threads is greater than
+     *        the core, this is the maximum time that excess idle threads
+     *        will wait for new tasks before terminating.
+     * @param unit the time unit for the {@code keepAliveTime} argument
+     * @param workQueue the queue to use for holding tasks before they are
+     *        executed.  This queue will hold only the {@code Runnable}
+     *        tasks submitted by the {@code execute} method.
+     * @throws IllegalArgumentException if one of the following holds:<br>
+     *         {@code corePoolSize < 0}<br>
+     *         {@code keepAliveTime < 0}<br>
+     *         {@code maximumPoolSize <= 0}<br>
+     *         {@code maximumPoolSize < corePoolSize}
+     * @throws NullPointerException if {@code workQueue} is null
+     */
+    public ThreadPoolExecutor(int corePoolSize,
+                              int maximumPoolSize,
+                              long keepAliveTime,
+                              TimeUnit unit,
+                              BlockingQueue<Runnable> workQueue) {
+        this(corePoolSize, maximumPoolSize, keepAliveTime, unit, workQueue,
+             Executors.defaultThreadFactory(), defaultHandler);
+    }
+
+自定义线程池：
+	在Executors无法满足需求的时候，需要自定义线程池
+	
+	构造方法对于队列是什么类型的比较关键：
+		在使用有界队列时，ArrayBlockingQueue：它的构造函数必须带一个容量参数
+		，表示该队列的最大容量。若有新的任务需要执行，如果线程池的实际线程数	
+		小于corePoolSize,则会创建新的线程，若大于corePoolSize则会将新任务
+		加入等待队列，若等待队列已经满了，无法加入，则在总线程数不大于maximumPoolSize
+		的前提下创建新的进程执行任务。若大于maximumPoolSize,则执行拒绝策略。
+		可以自定义拒绝策略
+		可见，有界队列仅当在任务队列装满时，才可能将线程数提升到corePoolSize以上，
+		除非系统非常繁忙，否则确保核心线程数量维持在corePoolSize.
+		
+		无界任务队列，无界任务队列可以通过LinkedBlockQueue类实现。
+		与有界队列相比，除非系统资源耗尽，否则无界的任务队列不存在任务入队失败的情况
+		。与有界类似，无界队列确保核心线程数量维持在corePoolSize，但是队列
+		会一直增长，直至内存耗尽。

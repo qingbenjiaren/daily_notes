@@ -1,0 +1,8 @@
+db.workPermitCollection.aggregate({'$group':{_id: 'max',permitNo:{'$max':'$permitNo'}}})
+db.getCollection('faultCollection').find({'realCompleteTime':{'$gte':1568968678682,'$lte':1568968678684}})
+
+
+
+1530
+9684
+3335

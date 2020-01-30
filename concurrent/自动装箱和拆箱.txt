@@ -1,0 +1,35 @@
+自动装箱和拆箱实际上是虚拟机调用的相关的方法
+例如
+Integer i = 10; 虚拟机做了这个操作,Integer i = Integer.valueOf(10);
+int a  = i;实际上虚拟机做了,int a = i.intValue(a);
+
+
+String,字符串最终都会放到
+private final char value[];不可变字符数组
+所以String只能赋值一次,不可变，要变只有新建一个str对象
+
+StringBuilder和StringBuffer的父类AbstractStringBuilder
+里面有个，char[] value;可变字符数组，
+所以，StringBuilder和StringBuffer是可变的
+
+StringBuilder线程不安全，效率高（一般使用它）
+StringBUffer线程安全，效率低
+
+StringBuider和StringBuffer常用方法
+
+append()方法，实际是再char[] value后面继续累加
+reverse();倒序
+setCharAt(3,'c');
+insert(0,'');return this;
+delete(0,10);return this;
+
+陷阱：
+String str8 = "";
+for(int i;i < 5000;i++){
+str8 = str8 + i;}//相当于产生了10000个对象
+
+如果有必要定义一些常量时，我们可以用枚举
+
+枚举也是类，当需要使用的枚举的高级特性的时候，还不如使用普通类
+
+
