@@ -15,6 +15,44 @@ NIO网络编程框架
 				对Socket的封装，其包含了一组API，大大简化了直接与Socket进行操作的复杂性
 			
 			EventLoopGroup
+				EventLoopGroup是一个Eventloop池，包含了很多EventGroup
+				是一个线程驱动，在其生命周期内只会绑定一个线程，让该线程处理一个Channel的所有IO事件
+				一个Channel一旦与一个Eventloop绑定，name在channel的整个生命周期内是不能改变的。
+				一个Eventloop可以与多个channel绑定
+				Channel与Eventloop的关系是多对一的。
+				而Eventloop与线程的关系是一对一
+			
+			ServerBootStrap
+				用于配置整个Netty代码，将各个组件关联起来。服务器端用的是ServerBootstrap，而客户端用的是BootStrap
+				
+			ChannelHandler与ChannelPipeline
+			
+			ChannelFuture
+				Netty中所有的I/O操作都是异步的，即操作不会立即得到返回结果。所以Netty中定义了一个ChannelFuture对象作为这个
+				异步操作的“代言人”，表示异步操作本身，如果想获取到该异步操作的返回值，可以通过该异步操作对象的addListener()方法
+				为该异步操作添加监听器，为其注册回调，当结果出来后马上调用执行。
+				Netty 的异步编程模型都是建立在Future与回调概念之上的。
+		
+		Netty执行流程
+		
+		
+		
+		SimpleChannelInboundHandler和ChannelInnoundHandler的区别以及使用场景
+			前者会释放msg的资源，后者不会，
+			若需要回传发送者的msg信息，则需要用后者，若使用了前者，write()方法正在处理msg，此时释放了msg，会报错，因为我正在用，你个给我释放了
+			反之应该使用前者
+			
+			如果对方根本就没有发数据过来，则自定义处理器建议使用后者，因为不需要处理msg，若继承自前者，需要重写read0方法（使用了模板方法），而Eventloop与线程的关系是一对一
+			从写该方法的目的是对来自于对方的数据进行处理
+			
+			若对方发送了数据
+			
+			
+			
+			
+				
+			
+				
 			
 	TCP的拆包与粘包
 	
