@@ -105,6 +105,12 @@ ZKClient客户端
 			
 		（2）代码
 		
+Curator客户端
+	简介
+		Curator是Netflix公司开源的一套zk客户端框架，与ZKClinet一样，其也封装了zk原生API。其目前已经成为 Apache 的顶级项目。同时，Curator 还提供了一套易用性、可读性更
+		强的 Fluent 风格的客户端 API 框架。
+		
+		
 	
 		
 	

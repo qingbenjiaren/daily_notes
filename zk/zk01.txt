@@ -1,4 +1,5 @@
-CAP遵循：CP
+﻿Paxos算法：
+CAP遵循：CP，保证了一致性，
 Leader选举
 	Paxos
 	
@@ -10,6 +11,7 @@ Leader选举
 		
 		
 		如果Follower设置太多，就会出现人多意见多的问题，提案投票的过程就会变得复杂
+		一方面，写操作变慢，另外一方面选举也会变慢
 		所以为了提高服务能力，同时不影响集群的沟通效率，可以设置observer
 		observer不参与投票和选举
 		
@@ -27,7 +29,7 @@ Leader选举
 		epoch:年号
 		xid：事务ID，是一个流水号
 		
-	始终状态
+	四种状态
 		LOOKING
 		FOLLOWING
 		LEADING
@@ -35,5 +37,13 @@ Leader选举
 	leader选举
 		myid
 		逻辑时钟：epoch
+
+
+
+
+选举源码入口：
+	FastLeaderElection
+	QuorumPeer
+	
 		
 		
