@@ -1,0 +1,115 @@
+Kafka    两次课
+springboot   一次课
+
+
+
+netty		
+
+
+dubble      
+
+
+springcloud
+====================================
+
+
+Kafka
+	应用场景
+		消息系统
+		web活动跟踪
+		数据监控
+		日志聚合
+		流处理：对消息处理再转换为另外一种主题
+		事件源
+		
+		
+		消息系统
+		日志
+		
+		Kafka的设计初衷是处理海量日志
+			没办法保证所有消息不丢失
+			
+			
+
+Kafka基本术语
+	topic
+		主题。在kafka里面，使用一个类别属性来划分消息的所属类，划分消息的这个类称为topic。topic相当于消息的分类标签，是一个逻辑概念
+		
+	Partition
+		分区。topic中的消息被分割为一个或多个partition，是一个屋里概念
+	
+	segment
+		段。将partition进一步细分为了若干的segment，每隔segment文件的最大大小相等。
+		
+		若partition为连续空间，那么对磁盘的要求会非常大，所以，真正的连续空间实际上是一个segment
+		
+		数据体现是
+		00000000000000000000.index    索引
+		00000000000000000000.log      日志
+								------说明这个segment之前没有任何消息
+		
+		若要找0000000111111的消息，会用二分查找法，先找到segment，再减seg名，然后去找索引，再通过索引找对应的数据，索引是偏移量
+		
+		一个segment放不下了，就会去创建另外一个segment
+		若磁盘没有连续空间了，就无法放入segment了，相当于满了
+		
+	broker
+		Kafka集群包含了一个或多个服务器，每个服务器称为一个broker
+		假设某个topic中有N个partition，集群中有M个broker，则broker与partition的数量关系是
+			若N>M,且N%M = 0，每个broker上会平均分配N/M个partition
+			若N>M,但N%M != 0,此时会出现各个broker上partition数量不平均的情况，此时各个broker的消息负载
+			是不均衡的。该情况要避免
+			若N < M，此时会出现某些broker上没有partition，也是负载不均，要避免
+	Producer
+		消息发布者
+		消息可以有KEY，然后会用key的hash值和分区的数量取模，决定该放入哪个分区
+		若没有KEY，则会平均分
+		也可以指定分区，若指定分区没有，再按KEY来，
+		
+		以上的情况下，顺序的消息分到了不同的分区，所以在生产上，无法保证其写入顺序与生产顺序的一致性，
+		若非要保证顺序，则写到一个partition
+		若前后两次消息走的不同的网络，就算写入同一分区，也会出现写入与生产顺序不一致（消息1的网络比消息2慢）
+		
+		所以，能严格控制的，只有写入顺序和消费顺序一致
+		
+	consumer
+		消费者。可以从broker中读取消息
+		对于消费者需要注意，
+			一个消费者可以消费多个topic的消息
+			一个消费者也可以消费同一个topic中的partition中的消息
+			反过来也成立，即一个partition允许多个无关的消费者同时消费
+			
+			那什么是有关？（同组的就是相关）
+			
+			ConsumerGroup
+			
+				组内consumer与partition的关系是1：n，partition与组内consumer的关系是1:1
+				也就是说，在稳定状态下，一旦为某组内consumer分配了某一个/几个partition后，就不会变化了，反过来说，
+				一旦为某partition分配了组内consumer，就不会变化了
+				
+				
+				这种设计方案最大的好处：简单，但是也存在不足：组内consumer消息的不平均，因为生产者生产消息到partition可能是不平均的
+				
+	replicas of partition
+		分区副本
+	
+	Partition leader
+		所有读写操作只发生在Leader分区上
+	Partition follower
+		所有Follower都需要从Leader同步消息，Follower与Leader始终保持数据同步
+		
+		他们是主备关系，非主从关系，主备关系，备不对外服务
+		
+	ISR
+		ISR，In-Sync Replicas,是指副本同步列表
+		
+		AR，Assigned Replicas ,指定的副本。在最初时，AR = ISR，但是在运行过程中，若出现了ISR中的某些
+		follower同步超时，则leader会将这些follwer从ISR列表中剔除，进入到OSR集合。即AR = ISR + OSR
+		在ISR集合中，第一个就是leader
+	
+	offset
+		偏移量。每条消息都有一个当前Partition下唯一的64字节的offset，它是相对于当前分区第一条消息的偏移量
+	
+	offset commit
+		
+				
