@@ -111,5 +111,134 @@ Kafka基本术语
 		偏移量。每条消息都有一个当前Partition下唯一的64字节的offset，它是相对于当前分区第一条消息的偏移量
 	
 	offset commit
+	
+	Rebalance
+		要避免不必要的rebalance
+		
+	Controller
+		leader的概念，负责管理partition和副本replicas的状态
+	
+	Zookeeper
+		负责broker Controller的选举
+		对比：
+			partition leader是由broker Controller负责选举的，选举算法是“论资排辈”
+			broker Controller是由zk负责选举的，选举算法是由临时顺序节点来算的,zk典型应用场景，master选举
+	
+	Coordinator:
+		用于管理Consumer Group中的各个成员，主要用于管理offset和rebalance
+		
+kafka工作原理和过程
+	消费路由策略：
+		通过API方式发布消息的时候，生成者是以record的方式进行发布。record中包含key和value
+		消息要写到哪个partition并不是随机的，二十有路由策略的
+		1 若指定了partition，直接写如paritiotn
+		2 若没有指定，但指定了key，则通过key的哈希值
+		3 轮询
+	
+	消息写入算法
+		1）
+		2）
+		3）
+		4）
+		5）
+		6）
+		7）
+		8）注：若接受follwer的ack超时，则leader会把该follwer从ISR中剔除到OSR，然后再增加HW
+		
+		
+		
+		
+	
+	HW机制
+		HW，HighWatermark,高水位，表示Consumer可以消费到的最高partition的偏移量。HW保证了kafka集群中消息的一致性。确切的说，是再brokder集群正常运转的状态下
+		保证了partition的leader和follwer间数据的一致性
+		
+		在HW机制中还有一个很重要的概念，LEO。
+		LEO，
+		
+	HW截断机制
+		保持了leader与副本的一致性，但是解决不了数据丢失的问题，仅仅是kafka数据丢失的一种情况
+		
+		
+		当原leader宕机后又恢复时，将其LEO回退到其宕机时的HW，然后再与新的leader进行数据同步，这种机制成为HW截断机制。
+		注意：这个过程中是有可能引发消息丢失。
+		
+		
+		HW机制：是为了保证再broker集群正常运转下的parition的leader与follower的数据一致性
+		HW截断机制：是为了保证broker集群leader出现宕机的情况下的partition leander与follwer的数据一致性，恢复时，需要找到HW，而不是LEO
+		
+		
+		
+	消息发送的可靠性机制
+		
+		生产者向kafka发消息时，可以选择需要的可靠性级别。通过acks参数值进行设置。
+		
+		（1）0值
+			异步发送。生产者想kafka发送消息而不需要kafka反馈成功ack。该方式效率最高，但可靠性最低。其可能会存在消息丢失的情况。
+			
+		（2）1值 默认值
+			同步发送，。。。。。。。。。会存在消息丢失的可能性，
+			该方法不能使producer确认其发送的消息发送成功。
+			只要producer没有收到acks，就一定使发送失败，会重新发送
+			简单说就是，收到ack了不一定成功，但是没有收到ack就一定失败
+		（3）-1值 all
+			同步发送，其值等同于all。需要等待ISR列表中所有副本都同步消息后才会想生产者发送
+			效率比较低，该方式存在重复接收的问题。注意重复接收，于重复消费使两个概念
+		1和-1对于producer没有区别，但是对于kafka来说就不一样了，这个自己想
+		
+	消费者消费过程：
+		生产者将消息发送到topic中，消费者即可对其进行消费，其消费过程如下：
+		1）
+		2）
+		3）
+		4）
+		5）
+		6）
+		7）
+		8）
+	
+	Partition Leader选举范围
+		当leader挂了从isr里选一个follower成为新的leader。若isr中没有follower怎么办？
+		可以通过unclean.leader.election.enable的取值来设置leader
+		（1）false（默认）
+			必须等待ISR列表中有副本活过来才进行新的选举。该策略可靠性有保证，但可用性低。
+		（2）true
+			在ISR中没有副本的情况下可以选择任何一个没有宕机主机中该topic的partition副本（即OSR中的parition副本）
+			可以选择任何一个OSR中的follwer作为新的leader，该策略可用性高，但是可靠性没有保证
+			
+	
+	东方时空栏目：财富故事会，上大学倒房，4年挣了5000万
+	
+	
+	重复消费问题级解决方案：
+		以下讨论的都是自动提交的问题
+		同一个consumer重复消费
+			前提使自动提交：自动提交是消费到最后一条消息再提交offset
+			若在设置的时间内，没有消费完，则发送的是error，对于kafka来说，收到的不是offset，而是error
+			这个时候消费者需要再次消费，但是上一次的offset没有提交，则会重新在poll数据，结果可能又消费不完，又来
+			当consumer消费能力低而引发的消费超时而引发的重复消费
+			解决方案：消费能力低，可以一次设置消费更少的消息
+						或者把超时时限设置得更长
+						自动提交改为改为手动提交，所以生产环境下一般都使用手动提交
+		
+		不同的consumjer重复消费
+			（同组内）当consumer消费了消息，但还未提交offset的时候宕机了，这个时候会出现重复消费
+			
+			解决方案：自动提交变手动提交，逐条提交
+						给消息添加Key，这个key消费过了，下一次读过来不消费（写代码解决）
+		
+		
+		
+		
+		幂等，客户端提交N多次请求
+		幂等：在请求参数相同的前提下，请求一次与请求n次，对系统的影响是相同的
+		GET:幂等
+		POST:非幂等（插入）
+		PUT:幂等（修改）
+		DELETE:幂等
+		
+		
+		PPT做动图，要学会啊兄弟
+		
 		
 				
