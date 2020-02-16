@@ -1,0 +1,47 @@
+五次课（重要）
+手写tomcat
+手写rpc
+手写dubbo
+netty源码解析
+
+
+手写tomcat
+	确切的说，这里要手写的是一个web容器，一个类似于tomcat的容器，用于处理http请求。
+	
+	需求：
+		
+			真正的tomcat内部有两个map：
+				web.xml注册servlet
+				第一个map：key是指定的servlet的名称，value是servlet的实例
+				第二个map：key为指定的Servlet的名称，value为该Servlet的全限定性类名
+				
+				
+				访问来了，直接访问第一个map有没有指定的名称：如果有则直接执行doget、dopost
+				如果没有，放问第二个，
+				若两个都没有，404
+				
+			真正的tomcat，不是用netty是用nio
+				
+		neety不要用5，要用4
+		
+		
+		第一步，制定规范
+			NettyRequest
+				String getUrl();
+				String getMethod();
+				
+				Map<String,List<String>> getParameters
+				
+				
+				
+				
+		
+		
+		把包变成URL  
+			com.abc.webapp  => com/abc/webapp
+			URL resource = this.getClass().getClassLoader().getResource("");
+			//将url资源转化为file
+			File dir = new File(resource.getFile());
+			//遍历指定包及其子孙包
+				
+

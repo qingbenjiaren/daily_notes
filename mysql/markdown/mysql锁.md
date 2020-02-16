@@ -288,7 +288,7 @@ insert into news value(7,3);#（id在间隙外，number在间隙内，成功）
 
 ### 死锁
 
-两个session互相等待对方的资源释放之后，才能释放自己的资源造成了死锁。
+两个session互相等待对方的资源释放之后，才释放自己的资源造成了死锁。
 
 ```sql
 1、session1: begin;--开启事务未提交

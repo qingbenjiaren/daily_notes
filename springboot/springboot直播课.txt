@@ -1,0 +1,152 @@
+快速开发框架Spring Boot
+	源码解析
+		入口：SpringBootApplication注解     //注解是从1.5开始引入的，1.5是04年年底发布的
+			组合注解：                      //若同一个地方出现了大量的注解，就不好了，所以引入了组合注解
+				@Inherited    //声明了这个注解的类，的子类也会继承这个注解，表示注解会被子类继承
+				@SpringBootConfiguration  //其实就是spring的configuration
+					组合注解
+					@Configuration
+						spring配置文件
+				@ComponentScan         //配置扫描指令
+					@Repeatable(ComponentScan.class)    //可以在同一个地方出现多次，前提是参数不一样
+					basePackages、basePackageClasses、value可以指定扫描的地方，若三个值都找不到或没有指定，则从声明这个注解锁标注的类所在包开始扫描
+				
+				@EnableAutoConfiguration    //@EnableXxx注解一般用于开启某一项功能，是为了简化代码的导入，即使用了该类注解，就会自动导入某些类
+				
+					配置类
+					
+					选择器
+					
+					注册器
+						@Import中指定的类一般为Registrar结尾，
+						
+				@EnableAutoConfiguration //开启自动配置的功能
+					自动配置分为两部分：
+						1：框架内部完成的自动配置由框架开发者决定
+						2：用户自定义要加入spring自动管理的组件
+					
+					@AutoConfigurationPackage
+						spring管理的用户自定义组件
+					@Import(AutoConfigurationImportSelector.class)
+						扫描框架内部的组件（框架开发者认为应该有的，配置文件中有MATA-INF/spring.factories）
+							spring boot web starter 
+								spring boot starter
+									spring boot autoConfiure
+										METE-INF
+											spring factories
+						调试getCandidateConfgurations，发现有208个候选的自动配置组件，很多很多
+							候选配置，要创建有条件
+							@ConditionalOnClass（ReidsOperations.class）
+							@EnableConfigurationProperties
+							@ConditionalOnMissingBean
+				
+			
+			application.yml的加载
+				run
+					run
+						run
+							run
+								prepareEnvironment
+									....
+										....
+											on开头的方法表示触发
+		Springboot与Redis整合
+			RedisAutoConfiguration
+			这个整合是springboot写的
+				
+		
+		
+		Mybatis与springboot整合
+			autoConfiguration里没有mybatis（作者不认为一定需要mybatis）
+			pom添加mybatis starter
+			这个starter是mybatis写的
+				mybatiesSpringbootAutoConfig
+					@ConditionalOnClass（)
+					@ConditionalOnBean
+					
+		自定义stater
+			Starter工程的命名
+				官方定义的Starter命名格式：spring-boot-starter-{name}
+				非官方定义的Starter名称格式：{name}-spring-boot-starter
+				
+			手写starter
+				导入依赖：SpringConfigurationProcessor、lombok
+				
+				
+				
+				注意在resource目录下写META-INF
+					添加spring.factories
+					
+					
+加点料
+
+		实现：添加开关
+			true起作用
+			false不起作用
+			
+			注意：在configuration
+				里面，方法是由顺序的
+				
+				
+				havingValue的默认值不是false
+				
+				
+关键步骤来了：
+	第一步：新建springboot工程，命名为{name}-spring-boot-starter
+	
+	第二步：写service（这个stater要完成什么工作？）
+	
+	第三步：写自定义注解
+			import lombok.Data;
+			import org.springframework.boot.context.properties.ConfigurationProperties;
+			@Data
+			@ConfigurationProperties("some.service")
+			public class SomeServiceProperties {
+				private String before;
+				private String after;
+			}
+			
+	第四步：写自动配置类
+			
+				import com.melo.wrap.service.SomeService;
+				import org.springframework.beans.factory.annotation.Autowired;
+				import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
+				import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+				import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+				import org.springframework.boot.context.properties.EnableConfigurationProperties;
+				import org.springframework.context.annotation.Bean;
+				import org.springframework.context.annotation.Configuration;
+
+				@Configuration
+				@ConditionalOnClass(SomeService.class)
+				@EnableConfigurationProperties(SomeServiceProperties.class)
+				public class SomeServiceAutoConfiguration {
+					@Autowired
+					private SomeServiceProperties properties;
+
+					@Bean
+					@ConditionalOnProperty(name = "some.service.enable",havingValue = "true",matchIfMissing = true)
+					public SomeService someService(){
+						return new SomeService(properties.getBefore(),properties.getAfter());
+					}
+
+					@Bean
+					@ConditionalOnMissingBean
+					public SomeService someService2(){
+						return new SomeService("","");
+					}
+
+				}
+				相当于一个javaconfig，只不过交给了springboot自动管理
+				
+	第五步：也就是关键步骤：
+		在resource下新建META-INF目录，在该目录下新建文件spring.factories
+			org.springframework.boot.autoconfigure.EnableAutoConfiguration=com.melo.wrap.config.SomeServiceAutoConfiguration
+
+				
+				
+				
+下节课讲Netty
+后面dubbo
+后面springclod
+	

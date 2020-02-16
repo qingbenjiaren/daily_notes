@@ -1,0 +1,334 @@
+Spring Boot基础
+	Spring Boot是由Pivotal团队提供的全新框架，其设计目的是用来简化新Spring应用的初始搭建以及开发过程。该框架使用了特定的方式来进行配置，
+	从而使开发人员不再需要定义**样板化**的配置。
+	
+	把样板化代码封装了，只需要配置需要配置的
+	
+	通过这种方式，Spring Boot致力于在蓬勃发展的快速应用开发领域（rapid application development）成为领导者
+	简单来说，SpringBoot可以简化spring应用程序的开发，使我们不再需要Spring配置文件及web.xml文件。
+	.properties和.yml文件都是配置项目需要的个性化部分
+	
+	Rod Johnson
+	2003年Spring开源项目启动
+	2004年Spring第一个版本诞生
+	2007年成立Spring Source公司，框架更名为Spring
+	2009年Spring Source公司被VMware收购
+	2012年Rod Johnson离开VMware离开spring source
+	2013年有VMware公司及多家公司联合出资成立了Pivotal公司。
+	2013年Pivotal公司研发Spring Boot，2014年Spring Boot第一个版本诞生。
+	
+	Rod Johnson不会音乐的金融顾问不是好程序员
+	
+springboot 启动日志分析
+2020-02-11 20:25:12.001  INFO 12408 --- [           main] com.melo.Application                     : Starting Application on DESKTOP-E24J8SV with PID 12408 (E:\study\kkb_workspace\springboot-course\01primary\target\classes started by 24926 in E:\study\kkb_workspace\springboot-course)
+2020-02-11 20:25:12.004  INFO 12408 --- [           main] com.melo.Application                     : No active profile set, falling back to default profiles: default
+2020-02-11 20:25:13.010  INFO 12408 --- [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port(s): 8080 (http)
+2020-02-11 20:25:13.021  INFO 12408 --- [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2020-02-11 20:25:13.021  INFO 12408 --- [           main] org.apache.catalina.core.StandardEngine  : Starting Servlet engine: [Apache Tomcat/9.0.30]
+2020-02-11 20:25:13.157  INFO 12408 --- [           main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2020-02-11 20:25:13.158  INFO 12408 --- [           main] o.s.web.context.ContextLoader            : Root WebApplicationContext: initialization completed in 1104 ms
+2020-02-11 20:25:13.315  INFO 12408 --- [           main] o.s.s.concurrent.ThreadPoolTaskExecutor  : Initializing ExecutorService 'applicationTaskExecutor'
+2020-02-11 20:25:13.461  INFO 12408 --- [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port(s): 8080 (http) with context path ''
+2020-02-11 20:25:13.464  INFO 12408 --- [           main] com.melo.Application                     : Started Application in 1.855 seconds (JVM running for 3.399)
+2020-02-11 20:25:32.069  INFO 12408 --- [nio-8080-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2020-02-11 20:25:32.069  INFO 12408 --- [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2020-02-11 20:25:32.074  INFO 12408 --- [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 5 ms
+
+创建工程的两种方式：
+	用IDEA创建
+	start.spring.io在线创建工程
+	创建maven工程，添加springboot依赖
+
+spring工程结构分析
+	.mvn目录
+		隐藏目录
+		wrapper
+			完成maven版本的切换
+			不是maven官方提供的工具，是第三方的
+			springboot工程直接就装好了
+			可以直接干掉
+	src
+		main
+			启动类
+			//其本身就是一个JavaConfig，即可以充当spring配置文件可以加@Bean
+			@SpringBootApplication
+				组合注解，封装了其他注解
+				@SpringBootConfiguration
+					组合注解
+					@Configuration
+						spring配置文件
+		resources:
+			templates:
+			static：静态资源相当于web的跟路径
+			application.properties:springboot的配置文件，把样板化代码封装了，只需要配置需要配置的
+				server.port = 8888
+	.gitignore:上传忽略
+	.iml:IDEA用到的
+	HELP.md markdown
+	pom.xml
+	
+	
+	
+	
+	
+jar和jar.original的关系和区别
+	这就得从pom文件来说了
+		
+		父级pom里有repackage
+			在原有的jar包基础上再打包
+		父级的父级里面可以看到启动器的版本信息
+		可以改spring的版本
+		
+war工程
+	ServletInitializer
+	
+
+配置文件解析
+	application.properties
+		server.port = 
+		server.servlet.context-path=/xxx
+	application.yml
+		server:
+			port: 8888
+			servlet:
+				context-path: /xx
+		yml文件注意缩进，一个级别两个空格，可以多，不能少，冒号后面有值最少一个空格
+		
+		可以百度百科查一下yaml，yaml是yaml不是一种标记语言的缩写递归
+		
+	文件名必须是application
+	.properties与.yml可同时存在，但是.properties的优先级要高于.yml
+	
+
+Actuator监控器
+	Actuator是Spring Boot提供的一个可插拔模块，用于对工程进行监控。其通过不同的监控终端实现不同的监控功能。
+	/actuator/health
+	/actuator/info
+		设置info信息
+			在.yml里添加，yam里key不能是汉字，value可以
+				info:
+					company:
+						name:
+						url:
+						address:
+					author:
+						name:
+						depart:
+					project:		#从pom文件中读取指定的属性值
+						groupId: @project.groupId@
+						artifactid: @project.artifactid@
+	
+	监控中心可以使用不同的端口号和上下文路径
+	在.yml里添加，yam里key不能是汉字，value可以
+		#修改actuator监控器相关配置
+		management:
+			server:
+				port: 9999		#指定actuator监听的端口号
+				servlet:
+					context-path: /ooo		#指定actuator监控器的上下文路径
+			endpoints:
+				web:
+					base-path: /base		#指定actuator监控终端的基本路径
+				exposure:
+					include: "*"		#开启所有监控终端，需要加双引号，默认只开启health和info，
+					exclude:["env","health"]		#指定要关闭的监控终端
+					exclude:
+						- env
+						- info
+						
+			
+					#可以百度一下 springboot actuator
+						
+
+第二章，springboot应用
+	单元测试
+	自定义异常页面
+	
+		指定异常界面
+			在resource下建public/error，千万不要建成public.error
+			新建404.html 500.html(用状态码命名)
+	
+	一个工程启动多个进程：
+		让一个应用启动三次，每次启动的端口号都一样，为了测试负载均衡
+			在debug/run config里面指定端口号：-Dserver.port=8081 (记得改名)
+			
+	多环境选择
+		什么是多环境选择
+			相同的代码运行在不同的环境
+				例如：开发、测试、生产数据库不一致
+				为不同的环境定义不同的配置信息，在不同的环境下自动加载对应的配置
+			
+			不同的环境执行不同的实现类
+			
+			
+		application.yml
+		application-dev.yml
+		application-pro.yml
+		
+		
+		在接口实现类上添加
+			@Profile("dev") //调用开发环境
+		
+		
+		
+		在application.yml里添加
+			spring:
+				profiles:
+					active:dev  #默认选择dev环境
+		注意命名规范
+		
+		
+		单配置式多环境选择实现
+		java -jar xxxxx.jar --spring.profiles.active=pro
+			
+			spring：
+				profile:
+					active:pro
+					
+			---
+			spring:
+				profile: dev
+			server:
+				port: 8888
+				servlet:
+					context-path: /ddd	
+			---
+			spring:
+				profile: pro
+			server:
+				port: 9999
+				servlet:
+					context-path: /ppp
+					
+	读取自定义配置
+		读端口号
+		@Value("${server.port}") 
+		private int port;
+		
+		yaml的不足，yaml文件不能被@PropertySource加载，而@PropertySource是加载自定义配置（非application命名的）
+		
+		要使用自定义配置文件，要是用.properties文件
+			提倡用lombok，
+			student.name
+			student.age
+			student.score
+			
+			
+			@Component  //生命周期由spring来管理
+			@PropertySource("classpath:custom.properties", encoding = "UTF-8")//指定配置文件
+			@ConfigurationProperties("student") //指定要读取属性的前缀
+			@Data //lombok
+			public class Student{
+				private String name;
+				private int age;
+				private double score;
+			}
+			
+			//使用
+			@Autowired
+			Student student;
+			
+			
+			.properties文件中还可以使用数组
+			
+			实体类用list来接收
+			
+			也可以这样
+			abc.company.depart[0].name
+			abc.company.depart[0].manager
+			abc.company.depart[0].num
+			abc.company.depart[1].name
+			abc.company.depart[1].manager
+			abc.company.depart[1].num
+			abc.company.depart[2].name
+			abc.company.depart[2].manager
+			abc.company.depart[2].num
+			
+			用List<Depat> departs ;来接受
+			
+			@Autowired
+			Company company;
+			
+			
+			
+Springboot使用jsp文件
+
+	注册webapp目录为资源目录
+	在pom.xml文件里build下添加路径
+	添加jasper依赖，用于解析jsp页面0
+	
+springboot mybatis
+	需要注册资源目录
+	
+	server:
+		port: 8888
+		servlet:
+			context-path: /xxx
+	#注册映射文件
+	#注册实体类别名
+	mybatis:
+		mapper-locations: classpath:**/**/**.xml
+		type-aliases-package:com.melo.bean
+		
+	
+	
+	# 注册数据源
+	spring:
+		datasource:
+			type: com.alibaba.druid.pool.DruidDataSource
+			driver-class-name: com.mysql.jdbc.Driver
+			url:
+			username:
+			password:
+			
+	总步骤：
+		在pom中导入三个依赖：Mybaties与Springboot整合依赖，Mysql驱动，Druid
+		
+		将dao目录注册为资源目录
+		在D奥接口上添加@Mapper注解
+		在主配置文件中注册三类信息；映射文件、实体类别名、数据源
+		
+springboot对事务的支持
+	//采用spring默认事务提交方式：发生运行时异常，回滚，发生受查异常提交
+	@Transactional
+	可以指定
+	@Transactional(rollbackFor = Exception.class)
+			
+			
+springboot对日志的控制
+	logback日志技术介绍
+
+	.yml
+		#Logback日志控制
+		logging:
+			pattern:
+				# 指定日志显示在控制台，并指定日志显示内容及格式
+				console: logs-%level %msg%n 
+			level:
+				root: warn #控制项目启动时的日志输出
+				com.melo.dao: debug #指定包中的类
+	或者直接在resource下加入logback.xml
+	
+	
+spring Boot中SSRM整合引用
+	Redis数据分类
+		使用redis缓存的数据可以划分为两类：DB更新后，Redis缓存中的数据就要马上清除，以保证将来缓存中的数据预DB中的数据绝对一致性，这是一类数据
+											还有一类对数据的准确性要求不太高，只要与DB中的数据差别不大就可以，所以这类数据一般会为其设置过期失效
+		
+		
+		
+		
+		
+		 
+
+
+任务，模仿mybatis手写一个starter
+				
+		
+	
+		
+	
+	
+			
+	
+	

@@ -122,7 +122,7 @@ db.myCollection.find().pretty()
 
 #### 原子性
 
-MongoDB中所有的写操作在单一文档层级上是原子的。
+<font color='red'>MongoDB中所有的写操作在单一文档层级上是原子的。</font>
 
 #### insertOne
 
@@ -317,6 +317,18 @@ db.users.insertMany(
 > ​	}
 >
 > )
+>
+> --特殊字符
+>
+> **$lt**  <  (less than )
+>
+> **$lte**  <= (less than or equal to )
+>
+> **$gt**  >  （greater than ）
+>
+> **$gte**  >=  (greater than or  equal to)
+
+
 
 #### 嵌入文档的查询
 

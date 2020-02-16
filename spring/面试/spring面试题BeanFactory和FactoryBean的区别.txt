@@ -1,0 +1,62 @@
+BeanFactory和FactoryBean的区别
+	BeanFactory:工厂，是ioc容器的基础，可以管理和创建任意类型的对象
+	FactoryBean：特殊的Bean，存在于ioc容器中，也就是存在于BeanFactory。FactoryBean只能针对某一类bean进行创建
+	FactoryBean和BeanFactory区别
+			BeanFactory是spring的顶级接口（基础容器），它负责管理bean实例
+			FactoryBean只是spring容器中，被管理的bean对象，只是说这个bean它的能力就是产生另外的对象。
+			
+			Factory
+			
+			BeanFactory是包容万物的大工厂。
+			
+			FacoryBean是一个只能生产指定对象的小工厂，而且这个小工厂还被大工厂管理。
+			
+			FactoryBean和普通Bean实例，被Spring管理时，也时区别对待的。通过&前缀来区分FactoryBean和普通bean
+			
+			
+			public class Test {
+				public static void main(String[] args) {
+					ApplicationContext context = new ClassPathXmlApplicationContext("application.xml");
+					for(String s : context.getBeanNamesForType(FactoryBean.class)){
+						System.out.println(s);
+					}
+					for(String s : context.getBeanNamesForType(OtherService.class)){
+						System.out.println(s);
+					}
+					for(String s : context.getBeanNamesForType(SomeService.class)){
+						System.out.println(s);
+					}
+					SomeService service = context.getBean(com.melo.bean.SomeService.class);
+					service.sayHello();
+				}
+			}
+
+			
+			
+			
+			二月 13, 2020 9:32:49 下午 org.springframework.context.support.AbstractApplicationContext prepareRefresh
+			信息: Refreshing org.springframework.context.support.ClassPathXmlApplicationContext@23ab930d: startup date [Thu Feb 13 21:32:49 CST 2020]; root of context hierarchy
+			二月 13, 2020 9:32:49 下午 org.springframework.beans.factory.xml.XmlBeanDefinitionReader loadBeanDefinitions
+			信息: Loading XML bean definitions from class path resource [application.xml]
+			&factoryBeanLearn
+			otherServiceImpl
+			factoryBeanLearn
+			Hello spring FactoryBean
+			
+			
+			
+			
+			
+BeanFactoryPostProcessor和BeanPostProcessor的区别
+
+	BeanFactoryPostProcessor：执行时机，在BeanDefinition未被用来创建对象之前，可以针对
+	BeanDefinition进行修改，比如PropertyPlaceholderConfigurer（context:property-
+	placeholder），就是实现了BeanFactoryPostProcessor，那么该类就对BeanDefinition进行了修改，
+	具体的修改：判断BeanDefinition中的属性值是否带有${},如果带有，则根据其他的key去获取
+	properties配置文件中的value值，进行替换。
+	
+	BeanPostProcessor：执行时机，在Bean已经被创建完成属性填充，在bean初始化的时候被调用。
+	初始化之前和初始化之后。比如AbstractAspectJAutoProxyCreator就实现了BeanPostProcessor，它
+	的作用就是对已经创建的bean进行aop切面操作。
+	
+	

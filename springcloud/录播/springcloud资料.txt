@@ -1,0 +1,63 @@
+什么是springcloud（多方面多角度）
+	一：官网简介：
+		构建分布式系统不需要复杂和容易出错。Spring Cloud为最常见的分布式系统模式提供了一种简单且易于接受的编程模型，帮助开发人员构建
+		有弹性的、可靠的、协调的应用程序。Spring cloud构建于Spring boot之上，使开发人员容易入手
+		
+		IOT：物联网
+		MOBILE：
+		browser
+	二：百度百科
+		Spring Cloud是一系列框架的有序集合。它利用Spring boot的开发便利性巧妙的简化了分布式系统基础设施的开发，如。。。。。都可以用Spring Boot的开发风格做到一键启动和部署。Spring Cloud并没有
+		重复制造轮子，
+		
+	三：总结
+		Spting Cloud是什么？阿里高级框架式，Dubbo项目的负责人刘军说，Spring Cloud是微服务系统架构的一站式解决方案。
+		Spring Cloud与Spring Boot是什么关系呢？Spring Boot为Spring Cloud提供了代码实现环境，使用Spring Boot将其他组件有机融合到了
+		Spring Cloud的体系架构中了。所以说，Spring Cloud是基于Spring Boot的、微服务系统架构的一站式解决方案
+	
+	四：老雷：
+		学习Spring Cloud就像是吃火锅，Spring Boot就是火锅，而第三方的框架就是菜，把菜扔到锅里面，菜多了就好吃了
+		
+	spring cloud中文网
+	
+	中文社区
+	
+	
+	Spring Cloud版本号
+		spring版本号是英国伦敦地铁站的站名，同时根据字母表的顺序来对应版本时间顺序。比如最早的版本是Angel，第二个是Brixton。。。。。
+		为什么要用单词而不是数字呢？
+				因为SpringCloud平台下有很多子项目，若用数字来定义，与子项目版本号区分不清楚，所以设计目的是，避免子版本号与自己的版本号所混淆
+		国内称呼springcloud是只读第一个数字，我们学的是G版
+		小号的意思：
+		SNAPSHOP:快照版，可以用，但是扔处于不断的开发改进中，不建议使用
+		PRE(M1 M2) milestone（里程碑版)，preview，预览版，内测版。不建议使用
+		RC Release Candidate 发行候选版，基本上差不多了，主要是为了修复bug，一般该版本中不会再添加大的功能修改，正式发行前的版本
+		SR 正式发布版 Service Release 服务发行版，正式发行版，一般还会被标注GA:General Availability
+		
+		
+		
+		
+	
+	
+	
+	Spring Cloud与Spring Boot版本
+	
+	到官网看
+	
+	Spring Cloud和Dubbo的技术选型
+		均为微服务框架，开发团队在进行技术选型时，总会将
+		
+		
+		可以从以下几个方面考虑：
+			架构完整度	
+				Dubbo仅提供了服务注册于服务治理两个模块。
+				Spring Cloud能完成的功能Dubbo都能完成，但是相比Spring Cloud，Dubbo完成起来可能要复杂一些，因为有时候需要自己手工去整合第三方框架
+			社区活跃度
+				Spring Cloud的活跃度更高
+			通讯协议
+				Dubbo通信使用的RPC（netty）（三层四层）效率比七层高
+				Spring Cloud是HTTP REST（七层）,Spring Cloud gRPC，Spring Cloud Dubbo
+			技术改造与微服务开发
+				若是传统项目改微服务项目，改成dubbo更容易
+				若是从头做的，还是做成Spring Cloud
+	
