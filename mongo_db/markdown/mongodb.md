@@ -213,3 +213,277 @@ MongoDB的客户端直接与**路由节点**相连，从配置节点上查询数
 
 # MongoDB的应用场景和不适用场景
 
+## 适用场景
+
+### 更高的写入负载
+
+默认情况下，MongoDB更侧重高数据写入性能，而非事务安全，MongoDB很适合业务系统中有大量“低价值”数据的场景。但是应当避免在高事务安全性的系统中使用MongoDB，除非能从架构设计上保证事务安全。
+
+### 高可用
+
+MongoDB的复副集(Master-Slave)配置非常简洁方便，此外，MongoDB可以快速响应的处理单节点故障，自动、安全的完成故障转移。这些特性使得MongoDB能在一个相对不稳定（如云主机）的环境中，保持高可用性。
+
+### 数据量很大或者未来会变得很大
+
+依赖数据库(MySQL)自身的特性，完成数据的扩展是较困难的事，**<font color='red'>在MySQL中，当一个单表达到5-10GB时会出现明显的性能降级</font>**，此时需要通过数据的水平和垂直拆分、库的拆分完成扩展，使用MySQL通常需要借助驱动层或代理层完成这类需求。而MongoDB内建了多种数据分片的特性，可以很好的适应大数据量的需求。
+
+### 基于位置的数据查询
+
+MongoDB支持二维空间索引，因此可以快速及精确的从指定位置获取数据。
+
+### 表结构不明确，且数据在不断变大
+
+在一些传统RDBMS中，增加一个字段会锁住整个数据库/表，或者在执行一个重负载的请求时会明显造成其它请求的 性能降级。通常发生在数据表大于1G的时候（当大于1TB时更甚）。 因MongoDB是文档型数据库，为非结构货的文 档增加一个新字段是很快速的操作，并且不会影响到已有数据。另外一个好处当业务数据发生变化时，是将不在需要 由DBA修改表结构。
+
+### 没有DBA支持 
+
+如果没有专职的DBA，并且准备不使用标准的关系型思想（结构化、连接等）来处理数据，那么MongoDB将会是你 的首选。MongoDB对于对像数据的存储非常方便，类可以直接序列化成JSON存储到MongoDB中。 但是需要先了解 一些最佳实践，避免当数据变大后，由于文档设计问题而造成的性能缺陷。 
+
+## 不适用的场景
+
+在某些场景下，MongoDB作为一个非关系型数据库有其局限性。MongoDB不支持事务操作，所以需要用到事务的应用建议不用MongoDB，另外MongoDB目前不支持join操作，需要复杂查询的应用也不建议使用MongoDB。
+
+## MongoDB索引
+
+索引通常能够极大的提高查询的效率，如果没有索引，MongoDB在读取数据时必须扫描集合中的每个文件并选取那些符合查询条件的记录。
+
+### 创建索引
+
+MongoDB使用 createIndex() 方法来创建索引。 
+
+> 注意在 3.0.0 版本前创建索引方法为 db.collection.ensureIndex()，之后的版本使用了 db.collection.createIndex() 方法，ensureIndex() 还能用，但只是 createIndex() 的别名。
+
+#### 语法
+
+```sql
+db.collection.createIndex({"title":1})
+```
+
+### 查看集合索引
+
+```sql
+db.col.getIndexes() 
+```
+
+### 查看集合索引大小
+
+```sql
+db.col.totalIndexSize() 
+```
+
+### 删除集合所有索引
+
+```sql
+db.col.dropIndexes() 
+```
+
+### 删除所有索引
+
+```sql
+db.col.dropIndex("索引名称") 
+```
+
+## 聚合查询
+
+MongoDB中聚合(aggregate)主要用于处理数据(诸如统计平均值,求和等)，并返回计算后的数据结果。有点类似sql语 句中的 count(*)。利用Aggregate聚合管道可以完成。MongoDB的聚合管道将MongoDB文档在一个管道处理完毕后将结果传递给下一个管道处理。管道操作是可以重复的。
+
+表达式：处理输入文档并输出。表达式是无状态的，只能用于计算当前聚合管道的文档，不能处理其它的文档。
+
+基本语法为：
+
+```sql
+db.COLLECTION_NAME.aggregate(AGGREGATE_OPERATION)
+```
+
+为了便于理解，先将常见的mongo的聚合操作和mysql的查询做下类比：
+
+| 表达式   | SQL操作       | 描述                               |
+| -------- | ------------- | ---------------------------------- |
+| $group   | group by      | 分组                               |
+| $sum     | count(),sum() | 计算综合                           |
+| $avg     | avg()         | 计算平均值                         |
+| $min     | min()         | 获取集合中所有文档对应值得最小值。 |
+| $max     | max()         | 获取集合中所有文档对应值得最大值。 |
+| $match   | where、having | 查询条件                           |
+| $sort    | order by      | 排序                               |
+| $limit   | limit         | 取条数                             |
+| $project | select        | 选择                               |
+| $lookup  | join          | 连接                               |
+
+下面以一个案例来演示：
+
+集合中的数据如下
+
+```sql
+> db.LIST1.aggregate([]) 
+{ "_id" : ObjectId("5cceaf55e7a4cf28dc5854cf"), "name" : "zhaoyun1", "age" : 1, "city" : "BJ" } 
+{ "_id" : ObjectId("5cceaf55e7a4cf28dc5854d0"), "name" : "zhaoyun2", "age" : 2, "city" : "BJ" }
+{ "_id" : ObjectId("5cceaf55e7a4cf28dc5854d1"), "name" : "zhaoyun3", "age" : 3, "city" : "BJ" }
+{ "_id" : ObjectId("5cceaf55e7a4cf28dc5854d2"), "name" : "zhaoyun4", "age" : 4, "city" : "BJ" }
+{ "_id" : ObjectId("5cceaf55e7a4cf28dc5854d3"), "name" : "zhaoyun5", "age" : 5, "city" : "BJ" }
+{ "_id" : ObjectId("5cceaf55e7a4cf28dc5854d4"), "name" : "zhaoyun6", "age" : 6, "city" : "BJ" }
+{ "_id" : ObjectId("5cceaf55e7a4cf28dc5854d5"), "name" : "zhaoyun7", "age" : 7, "city" : "TJ" }
+{ "_id" : ObjectId("5cceaf55e7a4cf28dc5854d6"), "name" : "zhaoyun8", "age" : 8, "city" : "TJ" }
+{ "_id" : ObjectId("5cceaf55e7a4cf28dc5854d7"), "name" : "zhaoyun9", "age" : 9, "city" : "TJ" } 
+{ "_id" : ObjectId("5cceaf55e7a4cf28dc5854d8"), "name" : "zhaoyun10", "age" : 10, "city" : "TJ"}
+```
+
+#### $group
+
+按照城市分组对年龄进行求和
+
+```sql
+db.LIST1.aggregate([{$group : {_id : "$city", snum : {$sum : "$age"}}}]) 
+{ "_id" : "TJ", "snum" : 34 }
+{ "_id" : "BJ", "snum" : 21 
+```
+
+#### $sum
+
+按照城市分组对年龄进行求和
+
+```sql
+db.LIST1.aggregate([{$group : {_id : "$city", snum : {$sum : "$age"}}}]) 
+{ "_id" : "TJ", "snum" : 34 }
+{ "_id" : "BJ", "snum" : 21 
+```
+
+#### TODO（详情见mongo手册）
+
+# Mongo精华
+
+## MongoDB Writedtiger存储引擎实现原理
+
+MongoDB2.3后默认采用WiredTiger存储引擎。(之前为MMAPV1引擎) 
+
+### Transport Layer业务层
+
+Transport Layer是处理请求的基本单位，Mongo有专门的listener线程，每次有连接进来，listener会创建一个新的线程conn负责与客户交互，它把具体的查询请求给network线程，真正到数据库里查询由TaskExecutor来完成。
+
+### 写请求
+
+WiredTiger的写操作会默认写入 Cache ,并持久化到 WAL (Write Ahead Log)，每60s或Log文件达到2G做一次 checkpoint ，产生快照文件。WiredTiger初始化时，恢复至最新的快照状态，然后根据WAL恢复数据，保证数据的完整性。
+
+Cache是基于BTree的，节点是一个page，root page是根节点，internal page是中间索引节点，leaf page真正存储数据，数据以page为单位与磁道读写。Wiredtiger采用Copy on write的方式管理修改操 作（insert、update、delete），修改操作会先缓存在cache里，**持久化时，修改操作不会在原来的leafpage上进行**，而是写入新分配的page，每次checkpoint都会产生一个新的root page。
+
+![](mongodb.assets/0d61f741f00024015fe69488ac4f6905050bdc53.jpeg)
+
+### Journaling
+
+为了在数据库宕机保证 MongoDB 中数据的持久性，MongoDB 使用了 Write Ahead Logging 向磁盘上的 journal 文件预先进行写入。 
+
+当数据库发生宕机时，我们就需要 Checkpoint 和 journal 文件协作完成数据的恢复工作：
+
+1. 在数据文件中查找上一个检查点的标识符；
+2. 在 journal 文件中查找标识符对应的记录；
+3. 重做对应记录之后的全部操作
+
+MongoDB会每隔60s或者在journal数据的写入达到2g的时候设置一次检查点，当然我们也可以通过在写入时传入j:true的参数强制journal文件同步。（<font color='red'>**详情见mongo手册**</font>）
+
+### 一致性
+
+WiredTiger使用copy on write管理修改操作。修改先放在cache中，并持久化，不直接作用在原leaf page，而是写入新分配的page，每次checkpoint产生新的page。
+
+相关文件：
+
+- WiredTiger.basecfg: 存储基本配置信息，与ConﬁgServer有关系 
+- WiredTiger.lock: 定义锁操作 
+- table*.wt: 存储各张表的数据 
+- WiredTiger.wt: 存储table* 的元数据 
+- WiredTiger.turtle: 存储WiredTiger.wt的元数据 
+- journal: 存储WAL 
+
+一次Checkpoint的大致流程如下:
+
+对所有的table进行一次Checkpoint，每个table的Checkpoint的元数据更新至WiredTiger.wt 对 WiredTiger.wt进行Checkpoint，将该table Checkpoint的元数据更新至临时文件WiredTiger.turtle.set
+
+将WiredTiger.turtle.set重命名为WiredTiger.turtle。 
+
+上述过程如中间失败，Wiredtiger在下次连接初始化时，首先将数据恢复至最新的快照状态，然后根据WAL恢复数据，以保证存储可靠性。 
+
+
+
+## MongoDB集群
+
+### MongoDB的高可用
+
+核心业务99.99%可用，一年宕机时间不超过52分钟（累计；平均每月3分钟，这个世界上没有100%的东西）。
+
+MongoDB的集群部署方案有**主从部署，副本集（主备）部署，分片部署，副本集与分片混合部署**
+
+### 主从复制原理
+
+MongoDB **Oplog**是MongoDB Primary和Secondary在复制建立期间和建立完成之后的复制介质，就是 Primary中所有的写入操作都会记录到MongoDB **Oplog**中，然后从库会来主库一直拉取Oplog并应用到 自己的数据库中。这里的Oplog是MongoDB local数据库的一个集合，它是Capped collection，通俗意 思就是它是固定大小，循环使用的。
+
+<font color='red'>oplog相当于一个表，固定大小循环使用，顺序结构（**undolog**）</font>
+
+
+
+#### 主从的特点
+
+- 数据备份
+- 读写分离（rs.slaveok()之后才能读）
+- 主挂，从不能变主
+
+不能做高可用
+
+## 副本集集群
+
+副本集也是主从的一种方式，
+
+副本集也可以做负载，主挂了，副本集可变主，能做到高可用
+
+![](mongodb.assets/副本集集群.png)
+
+#### 有仲裁
+
+主挂，从可变主，若仲裁挂了，集群不能用
+
+#### 无仲裁
+
+主挂，从可变主，没有仲裁节点会好一些？集群风险更小，且多一个节点负载均衡
+
+
+
+### 分片集群
+
+**实际数据节点、路由节点、配置节点**
+
+#### 片键
+
+##### 基于范围
+
+​	对于基于范围的分片，MongoDB按照片键的范围把数据分成不同的部分。--**<font color='red'>热点数据不均匀</font>**
+
+##### **基于哈希**
+
+一个片键的哈希范围对应一个chunk，一个chunk是一个副本集的一个存储单元。--**<font color='red'>热点数据可分散</font>**
+
+**map1**
+
+| key range | chunk  |
+| --------- | ------ |
+| [0,10}    | chunk1 |
+| [10,20}   | chunk2 |
+| [20,30}   | chunk3 |
+| [30,40}   | chunk4 |
+| [40,50}   | chunk5 |
+
+**map2**
+
+| chunk  | shard  |
+| ------ | ------ |
+| chunk1 | shard1 |
+| chunk2 | shard2 |
+| chunk3 | shard3 |
+| chunk4 | shard4 |
+| chunk5 | shard5 |
+
+
+
+![](mongodb.assets/副本集与分片混合部署.png)
+
+
+
+
+

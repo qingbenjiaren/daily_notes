@@ -391,7 +391,7 @@ db.users.find( { finished: { $gt: 15, $lt: 20 } } )
 
 ##### 返回嵌入文档中的指定字段
 
-```
+```sql
 db.users.find(
    { status: "A" },
    { name: 1, status: 1, "favorites.food": 1 }
@@ -406,7 +406,7 @@ db.users.find( { status: "A" }, { name: 1, status: 1, "points.bonus": 1 } )
 
 #### 查询为NULL或不存在的字段
 
-```
+```sql
 db.users.insert(
    [
       { "_id" : 900, "name" : null },
@@ -419,13 +419,13 @@ db.users.insert(
 
 ##### 相等过滤
 
-```
+```sql
 db.users.find({name : null})
 ```
 
 该查询返回这两个文档:
 
-```
+```sql
 { "_id" : 900, "name" : null }
 { "_id" : 901 }
 ```
@@ -436,13 +436,13 @@ db.users.find({name : null})
 
 `{ name : { $type: 10 } }` 查询 *仅仅* 匹配那些包含值是 `null` 的 `name` 字段的文档,亦即 `条目` 字段的值是BSON类型中的 `Null` (即 `10` ):
 
-```
+```sql
 db.users.find({name:{$type:10}})
 ```
 
 该查询只返回文 `条目` 字段是 `null` 值的文档:
 
-```
+```sql
 { "_id" : 900, "name" : null }
 ```
 
@@ -450,13 +450,13 @@ db.users.find({name:{$type:10}})
 
 ##### 存在性筛查
 
-```
+```sql
 db.users.find( { name : { $exists: false } } )
 ```
 
 该查询只返回那些 *没有* 包含 `条目` 字段的文档:
 
-```
+```sql
 { "_id" : 901 }
 ```
 
@@ -468,15 +468,15 @@ db.users.find( { name : { $exists: false } } )
 
 在命令行里，可以调用游标变量迭代最多20次并且打印匹配的文档
 
-```
+```sql
 var myCursor = db.users.find({type:2});
+--迭代最多20次
 myCursor
-
 ```
 
 也可以使用游标的Next（）方法来访问文档
 
-```
+```sql
 var myCursor = db.user.find({type:2})
 while (myCursor.hasNext()){
 	print(tojson(myCursor.next()))
@@ -485,7 +485,7 @@ while (myCursor.hasNext()){
 
 作为一种替代的打印操作，考虑使用 `printjson()` 助手方法来替代 `print(tojson())` ：
 
-```
+```sql
 var myCursor = db.users.find( { type: 2 } );
 
 while (myCursor.hasNext()) {
@@ -495,7 +495,7 @@ while (myCursor.hasNext()) {
 
 你可以使用游标方法 [`forEach()`](http://www.mongoing.com/docs/reference/method/cursor.forEach.html#cursor.forEach) 来迭代游标并且访问文档，如下例所示：
 
-```
+```sql
 var myCursor =  db.users.find( { type: 2 } );
 
 myCursor.forEach(printjson);
@@ -505,13 +505,13 @@ myCursor.forEach(printjson);
 
 在 `mongo`命令行里，你可以使用 :method:`~cursor.toArray()` 方法来迭代游标，并且以数组的形式来返回文档，如下例所示：
 
-```
+```sql
 var myCursor = db.inventory.find( { type: 2 } );
 var documentArray = myCursor.toArray();
 var myDocument = documentArray[3];
 ```
 
-```
+```sql
 var myCursor = db.users.find( { type: 2 } );
 var myDocument = myCursor[1];
 ```
@@ -535,7 +535,7 @@ MongoDB提供如下方法更新集合中的文档
 
 #### 原子性
 
-MongoDB中所有的写操作在单一文档层级上都是原子的。
+**MongoDB中所有的写操作在单一文档层级上都是原子的。**
 
 #### _id字段
 
@@ -543,7 +543,7 @@ MongoDB中所有的写操作在单一文档层级上都是原子的。
 
 #### 文档大小
 
-当执行更新操作增加的文档大小超过了为该文档分配的空间时。更新操作会在磁盘上重定位该文档。
+当执行更新操作增加的文档大小超过了为该文档分配的空间时。更新操作会在磁盘上**重定位该文档。**
 
 #### 字段顺序
 
@@ -570,7 +570,7 @@ MongoDB按照文档写入的顺序整理文档字段，*除了* 如下的情况�
 
 #### 索引
 
-Delete operations do not drop indexes, even if deleting all documents from a collection.
+**Delete operations do not drop indexes, even if deleting all documents from a collection.**
 
 #### 原子性
 
@@ -580,12 +580,12 @@ MongoDB中所有的写操作在单一文档层级上是原子的
 
 ### Read Concern Levels
 
-The following read concern levels are available:
+**The following read concern levels are available:**
 
 | level          | Description                                                  |
 | -------------- | ------------------------------------------------------------ |
-| **"local"**    | Default. The query returns the instance’s most recent data. Provides no guarantee that the data has been written to a majority of the replica set members (i.e. may be rolled back). |
-| **"majority"** | The query returns the instance’s most recent data acknowledged as having been written to a majority of members in the replica set.<br />To use read concern level of **"majority"**<br />you must start the mongod instances with the --enableMajorityReadConcern command line option(or the replication.enableMajorityReadConcern set to true if using a configuration file)<br />replica sets must use WitrdTiger storage engine and election protocol version 1. |
+| **"local"**    | **Default. The query returns the instance’s most recent data. Provides no guarantee that the data has been written to a majority of the replica set members (i.e. may be rolled back).** |
+| **"majority"** | **The query returns the instance’s most recent data acknowledged as having been written to a majority of members in the replica set.<br />To use read concern level of "<font color='red'>majority</font>"<br />you must start the mongod instances with the --enableMajorityReadConcern command line option(or the replication.enableMajorityReadConcern set to true if using a configuration file)<br />replica sets must use WitrdTiger storage engine and election protocol version 1.** |
 |                |                                                              |
 
 ### 来自阿里巴巴张东友的解读
@@ -609,20 +609,20 @@ MongoDB控制读策略，还有一个readPreference的设置，为了避免混�
   - **secondaryPreferred** 优先从secondary读取，没有secondary成员时，从primary读取
   - **nearest** 根据网络距离就近读取
 - **readConcern**决定读取数据时，能读到什么样的数据
-  - local 能读取任意数据，这个是默认设置
-  - majority 只能读取到【成功写入大多数节点的数据】
+  - **local** 能读取任意数据，这个是默认设置
+  - **majority** 只能读取到【成功写入大多数节点的数据】
 
 readPreference 和 readConcern可以配合使用。
 
 ##### readConcern解决什么问题
 
-readConcern的初衷在于解决**脏读**的问题，比如用户从MongoDB的primary上读取了某一条数据，但这条数据并没有同步到大多数节点，然后primary就故障了，重新恢复后这个primary节点会将未同步到大多数节点的数据回滚掉，导致用户读到了**脏数据**
+readConcern的初衷在于解决**脏读**的问题，比如用户从MongoDB的primary上读取了某一条数据，但这条数据并没有同步到大多数节点，然后primary就故障了，<font color='red'>重新恢复后**这个primary节点会将未同步到大多数节点的数据回滚掉**</font>，导致用户读到了**脏数据**
 
 当指定readConcern级别为majority是，能保证用户读到的数据**已经写入到大多数节点**，而这样的数据肯定不会发生回滚，避免了脏读的问题。
 
-需要注意的是：readConcern能保证读到的数据**不会发生回滚**，但并不能保证读的数据是最新的。
+<font color='red'>需要注意的是：readConcern能保证读到的数据**不会发生回滚**，但并不能保证读的数据是最新的。</font>
 
-有用户误以为，`readConcern` 指定为 majority 时，客户端会从大多数的节点读取数据，然后返回最新的数据。
+<font color='red'>有用户误以为，`readConcern` 指定为 majority 时，客户端会从大多数的节点读取数据，然后返回最新的数据。</font>
 
 ##### readConcern实现原理
 
@@ -641,7 +641,7 @@ MongoDB 要支持 majority 的 readConcern 级别，必须设置`replication.ena
 
 ###### primary 节点
 
-secondary 节点在 自身oplog发生变化时，会通过 replSetUpdatePosition 命令来将 oplog 进度立即通知给 primary，另外心跳的消息里也会包含最新 oplog 的信息；通过上述方式，primary 节点能很快知道 oplog 同步情况，知道『最新一条已经同步到大多数节点的 oplog』，并更新 snapshot 的状态。比如当t2已经写入到大多数据节点时，snapshot1、snapshot2都可以更新为 commited 状态。（不必要的 snapshot也会定期被清理掉）
+secondary 节点在 自身oplog发生变化时，会通过 **<font color='red'>replSetUpdatePosition</font>** **命令来将 oplog 进度立即通知给 primary**，另外**心跳的消息里也会包含最新 oplog 的信息**；通过上述方式，primary 节点能很快知道 oplog 同步情况，知道『最新一条已经同步到大多数节点的 oplog』，并更新 snapshot 的状态。比如当t2已经写入到大多数据节点时，snapshot1、snapshot2都可以更新为 commited 状态。（不必要的 snapshot也会定期被清理掉）
 
 ###### secondary节点
 
@@ -649,9 +649,9 @@ secondary 节点拉取 oplog 时，primary 节点会将『最新一条已经同�
 
 ##### 注意事项
 
-- 目前 `readConcern` 主要用于跟 mongos 与 config server 的交互上，参考[MongoDB Sharded Cluster 路由策略](https://yq.aliyun.com/articles/58689?spm=5176.8091938.0.0.UemLKg)
+- 目前 `readConcern` 主要用于跟 **mongos 与 config server 的交互上**，参考[MongoDB Sharded Cluster 路由策略](https://yq.aliyun.com/articles/58689?spm=5176.8091938.0.0.UemLKg)
 - 使用 `readConcern` 需要配置`replication.enableMajorityReadConcern`选项
-- 只有支持 readCommited 隔离级别的存储引擎才能支持 `readConcern`，比如 wiredtiger 引擎，而 mmapv1引擎则不能支持。
+- **只有支持 readCommited 隔离级别的存储引擎才能支持 `readConcern`，比如 wiredtiger 引擎，而 mmapv1引擎则不能支持。**
 
 ## Write Concern
 
@@ -705,7 +705,7 @@ MongoDB支持的WriteConncern选项如下
 
 ##### Definition
 
-> Prevents a write operation that affects multiple documents from yielding to other reads or writes once the first document is written. By using the `$isolated` option, you can ensure that no client sees the changes until the operation completes or errors out.
+> Prevents a write operation that **affects multiple documents** from yielding to other reads or writes once the first document is written. By using the `$isolated` option, you can ensure that no client sees the changes until the operation completes or errors out.
 >
 > This behavior can significantly affect the concurrency of the system as the operation holds the write lock much longer than normal for storage engines that take a write lock (e.g. MMAPv1), or for document-level locking storage engine that normally do not take a write lock (e.g. WiredTiger), `$isolated` operator will make WiredTiger single-threaded for the duration of the operation.
 
@@ -748,13 +748,13 @@ Without the `$isolated` operator, the `multi`-update operation will allow other 
 - 不管**write concern**如何，其他客户端使用:readconcern:"local"(default)，readConcern可以在写操作通知到发出请求的客户端之前看到写操作的结果。
 - 客户端使用：readconcern:"local"(default) readConcern可以读到可能在接下来被回滚的数据。（若写入数据未同步到到大多数节点前，primary宕机，会回滚）
 
-读的无限制性是读的默认隔离级别，并且对于单节点实例以及复制集和分片集群都是一样的。
+**读的无限制性是读的默认隔离级别，并且对于单节点实例以及复制集和分片集群都是一样的。**
 
 #### 读的无限制性与单个文档的原子性
 
 写操作对于单个文档是具有原子性的，这就是说如果一个写正在一个文档中更新多个字段，一个读取者将不会看到只有部分的字段被更新的结果。
 
-尽管读取者不可能看到*部分*更新的文档，但是读的无限制性意味着并发的读取者还是可以在更新:term:[`](http://www.mongoing.com/docs/core/read-isolation-consistency-recency.html#id1)durable`之前看到已经更新的文档。
+尽管读取者不可能看到*部分*更新的文档，**但是读的无限制性意味着并发的读取者还是可以在更新:term:[`](http://www.mongoing.com/docs/core/read-isolation-consistency-recency.html#id1)durable`之前看到已经更新的文档。**
 
 #### 读的无限制性与多个文档写
 
