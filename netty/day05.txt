@@ -1,0 +1,67 @@
+读源码，借鉴，学习，面试，运用我们的生产环境下
+
+
+Pipeline
+	netty启动时，在创建channel的过程中，创建了pipeline
+	pipeline是一个双向链表
+	
+	
+	注意@skip思想，如果一个接口的方法太多，给出的默认实现类都实现了，但是执行的时候也不是全部都执行，这种设计思路可以用@skip去操作，
+	然后继承类选择实现方法，内部用位图来判断是否执行该方法，默认全部为1，然后去与方法进行与操作
+	
+	第一阶段：添加到pipeline
+	
+	
+	
+	channelInbound  :主要是回调
+	channelOutbound：主要是主动调用的方法
+	
+	
+
+Channel的inBound与outBound处理器
+
+ChannelActive只会执行一次，具体执行哪个是要看顺序的，添加顺序的正序
+	ChannelInboundHandlerAdapter
+		如果调用了这个方法
+		ctx.fireChannelRead("2222"+msg)
+		
+		尾节点会释放掉msg，尾节点都会自动释放资源
+	
+	SimpleChanelInboundHandler
+		会自动释放msg
+
+ChannelOutbound  按倒序执行，先执行最后一个节点
+	ctx.channel().write("xxxxxxxxxxx");    
+	
+	
+	
+	
+	head节点要实现ChannelOutbound接口，是因为head节点需要调用unsafe方法进行底层写入（从最后一个节点开始像前传）
+	因为outbound是倒序的，所以只需要头结点实现outbound接口（因为只需要头结点去做底层写入）
+	
+	
+	作业：自己写一个既继承inbound和outbound接口的处理器
+	
+
+补课心跳机制
+	TCP长连接，不发心跳也可以维持两个小时，
+	那为什么要发心跳呢？
+	若不发心跳，服务器端不知道谁连着谁的连接没死，
+	所以需要客户端定期汇报情况，让服务端知道客户端的存活状态
+	关键看程序是怎么设计的
+	
+	看代码
+		读写空闲检测
+		读超时		几秒钟收不到信息就会发生读超时
+		写超时		几秒钟没有写信息，就会发生写超时
+		对于客户端，只要激活了，就可以随机的发心跳
+		
+		
+		服务端用userEventTriggered去执行自定义事件
+		
+		在生产环境下，如果有自定义的事件触发，可以用userEventTriggered去捕获
+
+
+dubbo7次直播
+		从内核到整个框架全部读完
+springcloud3次

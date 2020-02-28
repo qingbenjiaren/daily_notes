@@ -1,0 +1,56 @@
+手写RPC框架
+	RPC简介
+		在调用远程方法的时候就像调用本地的方法一样，直接service.什么什么 service.什什么，这样在写业务代码的时候
+		只需要关注业务本身
+		
+	用了concurrentHashMap也要用双重检测锁，因为不用双重检测锁会有资源浪费的问题，没有现存安全问题，但是会创建N多个对象，去设置一个key
+	
+	//线程安全的list
+	Collection.synchronizaedList(new ArrayList<>());
+	
+	微服务类的实现类只能实现一个接口，就是微服务（约定）
+	
+	注册
+	
+	把服务端的服务实现注册到map中，key是接口名，value是实现实例
+	
+	若一个接口有多个实现类，dubbo里是通过group和version解决的
+	
+	启动服务器
+		
+	
+	
+	RPC远程调用信息
+		Invocation
+			private String className;
+			private String methodName;
+			
+			private Class<?>[] paramTypes;
+			
+			private Object[] paramValues;
+			
+			
+			写代码时注意健壮性
+			
+			
+			动态代理：cglib  jdk   javassist
+			ASM和javassist
+			
+			针对动态代理，进行特训，特训，特训
+				
+			
+			
+			泛型方法：
+			如果不加泛型，是在编译时检测
+			如果加了泛型，是在运行时检测
+			
+			
+			为什么要用动态代理？
+			因为动态代理内部执行的方法就相当于netty的客户端了，远程，发送包，接收包
+			
+			
+			无反射无框架，无代理无框架，无泛型无框架
+			
+			
+			
+			Nagle算法

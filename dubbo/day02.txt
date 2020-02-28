@@ -1,0 +1,55 @@
+三种机制：
+	Adaptive机制，Wrapper机制，Activate机制
+Wrapper类规范
+	装饰者设计模式
+	Wrapper类不属于扩展类，没有独立的功能，是对原有扩展类的功能增强 
+	
+Activate机制
+	用于激活扩展类的。可以激活一组，有优先级，order=
+	优先级一样的，谁后注册谁就先加载
+	order值相同，则按照注册顺序的逆序进行加载
+	
+	loader.getActivationExtension(url,"","online")
+									value前缀 group
+	
+	@Activate（group = "online",value = "wechart"）
+	其中group和value应该看作一个标签，筛选的时候，两个都要满足
+	
+	
+	
+总结：
+	在配置文件中可能会存在四种类，普通扩展类，Adaptive类，Wrapper类，及添加了@Activate注解的扩展类
+	他们的共同点是都实现了spi接口。
+	一个SPI接口的Adaptive类只能有一个（无论是否是自动生成的），Wrapper类与Activate类都可以有多个
+	只有普通扩展类和Activate类属于扩展类，而Adaptive与Wrapper类均不属于扩展类
+	Adaptive、Activate都是通过注解实现的，而Wrapper则不是
+	
+	
+	throw new IllegalStateException("");
+	try with resource
+	
+	
+	zk黑名单
+	zk客户端界面
+	
+
+DOUBBO SPI的源码（主要任务）
+	入口serviceConfig
+	
+	
+	
+	扩展类需要有无参构造器
+	@Extension
+	
+	containsKey(clazz)
+	class做key   那么做value
+	
+	
+	两种机制
+		spring
+		spi
+		
+		
+	
+	
+	

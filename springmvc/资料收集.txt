@@ -1,0 +1,28 @@
+1.web.xml中context-param 、listener、 filter、servlet 加载顺序与其位置无关，不是listener在context-param 前面就先加载listener，
+然后再加载在context-param，它们保持固定加载顺序context-param --> listener --> filter --> servlet，
+而同类型标签之间加载顺序是按照xml文件中出现的先后顺序来进行加载；
+
+2.web容器(Tomcat、Jetty、Weblogic)启动时，容器会读取xml配置文件，
+将context-param加载到servlet上下文ServletContext中，以键值对形式保存，
+供后续节点listener、 filter、servlet读取其上下文参数，故context-param先于其它标签加载。
+
+
+
+<load-on-startup> 表签代表着servlet的加载优先级别，同时也代表着容器是否在启动时候加载这个servlet。
+
+
+<load-on-startup>1</load-on-startup>：当值为0或大于0时，表示容器在应用启动的时候加载这个servlet。正数值越小则加载这个servlet的级别越高，反之，则加载这个servlet的级别越低。
+
+
+当值为负数或没有指定的时候，则代表该servlet被选择的时候才去加载。
+
+
+当值发生重复时，则由服务器自己决定初始化顺序。
+
+url-pattern有四种方式
+	按照匹配优先级
+		/app/saveUser
+		/*(springmvc不能使用)（为什么，看课程视频）主要原因，springmvc没有提供JSPServlet，提供的是DispatchServlet
+		/*.do
+		/
+		

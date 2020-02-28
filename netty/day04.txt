@@ -1,0 +1,92 @@
+Netty源码解析
+	Netty服务端启动
+		创建服务端Channel
+			AbstractBootstrap##initAndRegister
+				ChannelFactory##new Channel
+					ReflectiveChannelFactory##
+						clazz.Constructor()------>
+							NioServerSocketChannel
+								super()->super
+									ch.configureBlocking(false)
+										DefaultChannelId(由几部分组成，比如时间戳，mac地址等)
+											Unsafe
+								
+								config NioServerSocketChannelConfig
+		重要点
+			在创建channel时完成了一下几个重要任务:
+				生成了channel的ID
+				创建了正在的数据传输对象Unsafe
+				创建了与channel绑定的ChannelPipeline
+				为Channel创建了其配置类ChannelConfig
+		
+		初始化
+			AbstractBootstrap##initAndRegister##init()------->bootstrap里面的东西都是用于channel初始化的
+				option是和parentGroup相关的选项
+				childOption是和childGroup相关的
+				attr(AttributeKey.valueof(""),"")
+				childAttr()
+				handler(指定的处理器能获取到  attr里面存的属性值)
+				childHandler
+					Attribute<Object>number = ch.attr(AttributeKey.valueof());
+				
+				
+				
+				ServerBootstrap##option
+				
+				
+				注意：ChannelInitializer的妙处
+				
+				
+				
+				把客户端的channel和服务端的channel连在一起
+				相当于跳过壕沟的第一个人
+		
+		注册(将Channel注册给selector)：config().group().register()
+				NIO的多路复用
+					selector
+				
+				两次注册，一次是主channel
+						  一次是子channel（客户端发过来的channel）
+							next().register(channel)------------->next()相当于选一个eventloop
+							
+							跟到底：javaChannel().register()注册这个channel到给定的selector
+							
+					pipleline里面放的都是节点
+					
+					
+							if(PlatformDepentdent.javaVersion>=1.7){
+								
+							}else{
+								
+							}
+		
+		
+		
+	NioEventLoop
+		
+		本质上是一个EventExecutor
+		
+			DEFAULT_EVENT_LOOP_THREADS = 逻辑处理器*2
+			
+				MultithreadEventExecutorGroup
+			
+			
+				executor = new ThreadPerTaskExecutor(newDefaultThreadFactory())----->
+				
+					挨着创建DEFAULT_EVENT_LOOP_THREADS个子的执行器EventExecutor
+								new NioEventLoop
+									
+									newMpscQueue() ---->multiple producers single consumer
+								
+								注意：this.executor = Thread
+								
+										责任链
+		
+		一个NioEventLoop创建一个线程，让它去执行任务队列里任务
+		
+		任务封装任务，最重要的思想，是责任链的思想，每次封装都有新的任务添加，不同的任务隔离性会好一些
+									
+	
+	Pipeline
+	
+	Channel的inBound与outBound处理器
