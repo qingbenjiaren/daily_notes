@@ -837,3 +837,490 @@ Dubbo配置文件中各个标签属性配置的优先级总原则是：
 provider上配置合理的provider端属性
 
 在consumer上尽量多配置consumer端属性
+
+
+
+# Dubbo的系统架构解析
+
+- hsf：淘宝（很舒服）
+- dubbo：阿里巴巴
+- sofa：蚂蚁金服
+
+## Dubbo的两大设计原则
+
+Dubbo框架在设计时遵循了两大设计原则
+
+- Dubbo使用**“微内核+插件”**的设计模式。内核只负责组装插件**（扩展点）**，Dubbo的功能都是由插件实现的，也就是 Dubbo 的所有功能点都可被用户自定义扩展类所替换。
+- 采用**URL**作为配置信息的统一格式，所有扩展点都通过传递**URL**携带配置信息
+
+## Dubbo的三大领域模型
+
+为了对Dubbo整体架构叙述的方便，Dubbo抽象出了三大领域模型。
+
+- **Protocol服务域：**是Invoker暴露和引用的主功能入口，它负责Invoker的生命周期管理。
+- **Invoker实体域：**是 Dubbo 的核心模型，其它模型都向它靠扰，或转换成它，它代表一个可执行体，可向它发起 invoke 调用，它有可能是一个本地的实现，也可能是一个远程的实现，也可能一个集群实现。
+- **Invocation 会话域：**它持有调用过程中的变量，比如方法名，参数等。
+
+## Dubbo的四大组件
+
+![](dubbo.assets/Dubbo Architecture.png)
+
+Dubbo中存在四大组件：
+
+- **Provider：**暴露服务方，亦称为服务提供者。
+- **Consumer：**调用远程服务方，亦称为服务消费者。
+- **Registry：**服务注册与发现的中心，提供目录服务，亦称为服务注册中心
+- **Monitor：**统计服务的调用次数、调用时间等信息的日志服务，亦称为服务监控中心
+
+## Dubbo的十层架构
+
+![](dubbo.assets/1582905825(1).jpg)
+
+Dubbo的架构设计划分为了10层。图中左边淡蓝色背景为服务Consumer使用的接口，右边淡绿色背景为服务Provider使用的接口，位于中轴线的为双方都要用到的接口。对于这10层，根据其总体功能划分，可以划分为三大层：
+
+### Business层
+
+该层仅包含一个service服务层，该层与实际业务逻辑有关，根据服务消费方和服务提供方的业务设计，实现对应的接口。
+
+### RPC层
+
+该层主要负责整个分布式系统中各个主机间的通讯。该层包含了以下6层。
+
+#### config配置层
+
+以ServiceConfig和ReferenceConfig为中心，用于加载并解析Spring配置文件中的Dubbo标签。
+
+#### proxy服务代理层
+
+服务接口透明代理，生成服务的客户端 Stub 和服务器端 Skeleton, 以 ServiceProxy 为中心，扩展接口为 ProxyFactory。
+
+Proxy 层封装了所有接口的透明化代理，而在其它层都以 Invoker 为中心，只有到了暴露给用户使用时，才用 Proxy 将 Invoker 转成接口，或将接口实现转成 Invoker，也就是去掉 Proxy 层 RPC 是可以运行的，只是不那么透明，不那么看起来像调本地服务一样调远程服务。
+
+#### registry 注册中心层
+
+封装服务地址的注册和发现，以服务URL为中心，扩展接口为RegistryFactory、Registry、RegistryService，可能没有服务注册中心，此时服务提供方直接暴露服务。
+
+#### cluster 路由层
+
+封装多个提供者的路由和负载均衡，并桥接注册中心，以Invoker为中心，扩展接口为Cluster、Directory、Router和LoadBalance，将多个服务提供方组合为一个服务提供方，实现对服务消费通明。只需要与一个服务提供方进行交互。
+
+Dubbo官方指出，在Dubbo的整体架构中，Cluster 只是一个外围概念。Cluster 的目的是将多个 Invoker 伪装成一个 Invoker，这样用户只需关注 Protocol 层 Invoker 即可，加上Cluster 或者去掉 Cluster 对其它层都不会造成影响，因为只有一个提供者时，是不需要Cluster 的。
+
+#### monitor监控层
+
+RPC调用时间和次数监控，以Statistics为中心，扩展接口MonitorFactory、Monitor和MonitorService。
+
+#### protocol远程调用层
+
+封装RPC调用，以Invocation和Result为中心，扩展接口为Protocol、Invoker和Exporter。Protocol是服务域，它是Invoker暴露和引用的主功能入口，它负责Invoker的生命周期管理。Invoker是实体域，它是Dubbo的核心模型，其他模型都是向它靠拢，或转换成它，它代表一个可执行体，可向它发起Invoker调用，它有可能是一个本地实现，也有可能是一个远程实现，也有可能是一个集群实现。在 RPC 中，Protocol 是核心层，也就是只要有 Protocol + Invoker + Exporter 就可以完成非透明的 RPC 调用，然后在 Invoker 的主过程上 Filter 拦截点。
+
+### Remotting层
+
+Remoting 实现是 Dubbo 协议的实现，如果我们选择 RMI 协议，整个 Remoting 都不会用上，Remoting 内部再划为 Transport 传输层和 Exchange 信息交换层，Transport 层只负责单向消息传输，是对 Mina, Netty, Grizzly 的抽象，它也可以扩展 UDP 传输，而 Exchange层是在传输层之上封装了 Request-Response 语义。
+
+具体包含以下三层：
+
+#### exchange信息交换
+
+封装请求响应模式，同步转异步，以Request和Response为中心，扩展接口为Exchanger和ExchangeChannel,ExchangeClient和ExchangeServer。
+
+#### transport网络传输层
+
+抽象和mina和netty为统一接口，以Message为中心，扩展接口为Channel、Transporter、Client、Server和Codec。
+
+#### serialize数据序列化层
+
+可复用的一些工具，扩展接口为Serialization、ObjectInput、ObejctOutput和ThreadPool。
+
+
+
+# Dubbo的内核解析
+
+所谓Dubbo的内核是指，Dubbo中所有功能都是基于它之上完成的，都是由它作为基础的。dubbo的内核包含四部分：**SPI、AOP、IoC，与Compiler。**
+
+## JDK的SPI机制
+
+### 三层框架中的“面向抽象编程”结构示意图
+
+![](dubbo.assets/JDK的SPI.png)
+
+SPI，Service Provider Interface，服务提供者接口，是一种服务发现机制。
+
+### JDK的SPI规范
+
+- JDK的SPI规范定义：
+- 接口名：可随意定义
+- 实现类名：可随意定义
+- 提供者配置文件路径：其查找路径目录为**META-INF/services**
+- 提供者配置文件名称：接口的全限定性类名：没有扩展名。
+- 提供者配置文件的内容：该接口的所有实现类的全限定类名写入到该文件中，一个类名占一行。
+
+### 代码举例
+
+定义接口
+
+```java
+public interface SomeService{
+    void doSome();
+}
+```
+
+定义两个实现
+
+```java
+public class OneServiceImpl implements SomeService{
+    public void doSome(){
+        ...
+    }
+}
+
+public class TwoServiceImpl implements SomeService{
+    public void doSome(){
+        ...
+    }
+}
+```
+
+
+
+创建目录与配置文件
+
+resources--->META-INF.services---->com.melo.SomeService
+
+定义消费者
+
+```java
+public class SPITest{
+    public static void mian(String[] args){
+        ServiceLoader<SomeService> loader = ServiceLoader.load(SomeService.class);
+        Iterator<SomeService> it = loader.iterator();
+        while(it.hasNext()){
+            SomeService service = it.next();
+            service.doSome();
+        }
+    }
+}
+```
+
+
+
+## Dubbo的SPI
+
+Dubbo并没有直接使用JDK的SPI，而是在其基础之上对其进行了改进。
+
+### 规范说明
+
+Dubbo的SPI规范是：
+
+- 接口名：可以随意定义
+- 实现类名：在接口名前添加一个用于表示自身功能的“标识前辍”字符串
+- 提供者配置文件路径：在依次查找的目录为
+  - META-INF/dubbo/internal
+  - META-INF/dubbo
+  - META-INF/services
+- 提供者配置文件名称：接口的全限定性类名，无需扩展名
+- 提供者配置文件内容：文件的内容为key=value形式，value为该接口的实现类的全限类性类名，key可以随意，但一般为该实现类的“标识前辍”（首字母小写）。一个类名占一行。
+- 提供者加载：ExtensionLoader类相当于JDK SPI中的ServiceLoader类，用于加载提供者配置文件中所有的实现类，并创建相应的实例。
+
+### Dubbo的SPI举例
+
+导入Dubbo的依赖
+
+```xml
+<groupId>org.apache.dubbo</groupId> 
+<artifactId>dubbo</artifactId>
+<version>2.7.3</version>
+```
+
+定义SPI接口
+
+```java
+@SPI
+public interface Order{
+    String way();
+}
+```
+
+定义两个扩展类
+
+```java
+public class AlipayOrder implements Order{
+    @Override
+    public String way(){
+        System.out.println("--支付宝");
+        return "支付宝"
+    }
+}
+
+public class WechatOrder implements Order{
+    @Override
+    public String way(){
+        System.out.println("--微信");
+        return "微信"
+    }
+}
+```
+
+定义扩展文件
+
+```properties
+alipay=...
+wechat=....
+```
+
+测试类
+
+```java
+ExtensionLoader<Order> loader = ExtensionLoader.getExtensionLoader(Order.class);
+Order alipay = loader.getExtension("alipay");
+....
+....
+```
+
+## Adaptive机制
+
+Adaptive机制，即扩展类的**自适应**机制。即其可以指定想要加载的扩展名，也可以不指定。若不指定，则直接加载默认的扩展类。即其会自动匹配，做到自适应。其是通过@Adaptive注解实现的。
+
+### @Adaptive注解
+
+@Adaptive注解可以修饰类与方法，其作用相差很大。
+
+#### @Adaptive修饰类
+
+被@Adapative修饰的SPI接口扩展类称为Adaptive类，表示该SPI扩展类会按照该类中指定的方式获取，即用于固定实现方式。其是装饰者设计模式的应用。
+
+#### @Adaptive修饰方法
+
+被@Adapative修饰SPI接口中的方法称为Adaptive方法。在SPI扩展类中若没有找到Adaptive类，但系统却发现了Adapative方法，就会根据Adaptive方法自动为该SPI接口动态生成一个Adaptive扩展类，并自动将其编译。例如Protocol接口中就包含两个Adaptive方法。
+
+### Adaptive类代码举例
+
+```java
+public class AdaptiveOrder implements Order{
+    //用于指定要加载的扩展名称
+    private String orderName;
+    public void setOrderName(String orderName){
+        this.orderName = orderName;
+    }
+    @Override
+    public String way(){
+        ExtensionLoader<Order> loader = ExtensionLoader.getExtensionLoader(Order.class);
+        //获取URL中的请求参数order的值
+        String name = orderName;
+        Order order = orderName;
+        if(StringUtils.isEmpty(name)){
+            order = loader.getDefaultExtension();
+        }else{
+            order = loader.getExtension(name);
+        }
+        return order.way();
+    }
+}
+```
+
+配置文件
+
+```properties
+alipay=
+wechat=
+adaptive=
+```
+
+测试
+
+```java
+public class OrderTest{
+    @Test
+    public void test01(){
+        ExtensionLoader(Order) loader = ExtensionLoader.getExtensionLoader(Order.class);
+        Order adaptiveExtension = loader.getAdaptiveExtension();
+        sout();
+        
+        //指定
+        ((AdaptiveOrder)adaptiveExtension).setOrderName("wechat");
+        sout()
+    }
+}
+```
+
+
+
+### Adaptive方法规范
+
+​	下面我们准备要定义Adaptive方法，那么Adaptive方法的定义有什么要求呢？我们通过查看动态生成的Adaptive类来总结Adaptive方法的要求
+
+#### 动态生成Adaptive类格式
+
+```java
+package <SPI接口所在包>;
+public class SPI接口名$Adpative implements SPI接口{
+    public adaptiveMethod (arg0, arg1, ...) {
+        // 注意，下面的判断仅对URL类型，或可以获取到URL类型值的参数进行判断
+        // 例如，dubbo的Invoker类型中就包含有URL属性
+        if(arg1==null) throw new IllegalArgumentException(异常信息);
+        if(arg1.getUrl()==null) throw new IllegalArgumentException(异常信息);
+        
+        URL url = arg1.getUrl();
+        // 其会根据@Adaptive注解上声明的Key的顺序，从URL获取Value，
+        // 作为实际扩展类。若有默认扩展类，则获取默认扩展类名；否则获取
+        // 指定扩展名名。
+        String extName = url.get接口名() == null?默认扩展前辍名:url.get接口名();         		if(extName==null) throw new IllegalStateException(异常信息);   
+        SPI接口 extension = ExtensionLoader.getExtensionLoader(SPI接口.class)
+            .getExtension(extName);
+        return extension. adaptiveMethod(arg0, arg1, ...);
+    }
+    public unAdaptiveMethod( arg0, arg1, ...) {
+    	throw new UnsupportedOperationException(异常信息);
+    }
+}
+```
+
+#### 方法规范
+
+从前面的动态生成的Adaptive类中的adaptiveMethod()方法体可知，其对于要加载的扩展名的指定方式是通过URL类型的方法参数指定的。所以对于Adaptive方法的定义规范仅一条：其参数包含URL类型的参数，或参数可以获取到URL类型的值。方法调用者是通过URL传递要加载的扩展名的。
+
+### Adaptive方法代码举例
+
+```java
+@Adaptive
+public interface Order{
+    
+    String way();
+    
+    @Adaptive
+    String pay(URL url);
+}
+```
+
+测试
+
+```java
+ExtensionLoader(Order) loader = ExtensionLoader.getExtensionLoader(Order.class);
+Order adaptiveExtension = loader.getAdaptiveExtension();
+//模拟一个URL
+URL url = URL.valueOf("xxx://localhost/ooo");
+System.out.println();
+URL url = URL.valueOf("xxx://localhost/ooo?order=wechat");
+sout();
+
+
+```
+
+
+
+## Wrapper机制
+
+Wrapper机制，即扩展类的包装机制。就是对扩展类中的SPI接口方法进行增强，进行包装，是AOP思想的体现，是Wrapper设计模式的应用。一个SPI可以包含多个Wrapper。
+
+### Wrapper类规范
+
+Wrapper机制不是通过注解实现的，而是通过Wrapper类实现的。
+
+Wrapper类在定义时需要遵循如下规范。
+
+- 该类要实现SPI接口
+- 该类中要有SPI接口的引用
+- 在接口实现方法中要调用SPI接口引用对象的相应方法
+- 该类名称一般以Wrapper结尾（不是必需的）
+
+### 代码举例
+
+```java
+public class OrderWrapper implements Order{
+    private Order order;
+    public OrderWrapper(Order order){
+        this.order = order;
+    }
+    
+    @Override
+    public String way(){
+        sout();
+        String way = order.way();
+        sout();
+        return way;
+    }
+    
+    public String pay(URL url){
+        sout();
+        String pay = order.pay();
+        System.out.println();
+        return pay;
+    }
+}
+```
+
+~~~java
+public OrderWapper2 implements Order{
+    private Order order;
+    public OrderWapper2(Order){
+        this.order = order;
+    }
+     @Override
+    public String way(){
+        sout();
+        String way = order.way();
+        sout();
+        return way;
+    }
+    
+    public String pay(URL url){
+        sout();
+        String pay = order.pay();
+        System.out.println();
+        return pay;
+    }
+}
+~~~
+
+修改配置文件
+
+```properties
+alipay=
+wechat=
+wrapper=
+wrapper2=
+```
+
+
+
+## Activate机制
+
+用于激活扩展类
+
+Activate机制，即扩展类的激活机制。通过指定的条件来激活当前的扩展类。其是通过@Activate注解实现的。
+
+### @Activate注解
+
+在@Activate注解中共有五个属性，其中before、after两个属性已经过时，剩余有效属性还有三个。意义为：
+
+- **group：**为扩展类指定所属的组别，是当前扩展类的一个标识。String[]类型，表示一个扩展类可以属于多个组。
+- **value：**为当前扩展类指定的key，是当前扩展类的一个标识。String[]类型，表示一个扩展类可以有多个指定的key。
+- **order**：指定筛选条件相同的扩展类的加载顺序。序号越小，优先级越高。默认值为0。order值相同，则按照**注册顺序的逆序**进行加载。
+
+
+
+## 总结
+
+- 在配置文件中可能会存在四种类：普通扩展类，Adaptive类，Wrapper类，及添加了@Activate注解的扩展类。它们的共同点是，都实现了SPI接口。
+- 一个SPI接口的Adaptive类只能有一个（无论是否是自动生成的），而Wrapper类与Activate类可以有多个。
+- 只有普通扩展类与Activate类属于扩展类，而Adaptive与Wrapper类均不属于扩展类
+- Adaptive、Activate都是通过注解实现的，而Wrapper则不是。
+
+
+
+## Dubbo的SPI源码分析
+
+以spring容器的获取过程为例来解析SPI的执行过程
+
+![](dubbo.assets/Dubbo的SPI总体思路.png)
+
+### 代码解析
+
+#### 源码阅读入口
+
+看10层架构的地方有个start，从ServiceConfig.java开始跟
+
+```java
+private static final Protocol protocol = ExtensionLoader.getExtensionLoder(Protocol.class).getAdaptiveExtension();
+```
+
