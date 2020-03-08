@@ -1,0 +1,116 @@
+Dubbo IOC源码解析
+	为什么要用Holder<>，value可以是Object可以是map，可以是其他东西，,这就是框架，因为以后便于管理
+	以后就直接操作Holder，不和具体的类型相绑定，注意注意，这里可以用策略模式了
+	
+	
+	只要有扩展类，就去自适应
+	
+	只有两个类有现成的Adaptive类，Factory和Compiler
+	
+	spring父子容器
+	
+	spring按类型获取bean的时候
+	细品细品
+	if(Object.class == type){
+		return null;
+	}
+	
+	在dubbo里面，所有的扩展类都是通过spi或者spring容器来获取的
+	
+	
+	META-INF下面的东西，在打过包以后会合并到一起
+	详情请见：org-apache-dubbo2.7.3---META-INFO
+	
+	
+Dubbo AOP源码解析
+	就是Wrapper机制
+		增强目标方法
+		层层包装
+		wrapper不属于扩展类
+		
+		
+Dubbo的动态编译Compile源码解析
+
+	javassistCompiler
+	
+	Javassist简介
+		动态代理，动态生成编译好的
+		是一个开源的分析、编辑和创建java字节码的类库。一般情况下，对字节码文件进行修改需要使用虚拟机指令的。
+		而使用javassist，可以直接使用java编码的形式，而不需要了解虚拟机指令，就能动态改变类的结构，或者动态生成类
+		
+		CtClass,可以执行虚拟机指令
+		
+Dubbo的动态编译是怎么完成的
+		根据SPI获取它的自适应Adaptive
+		根据自适应的Adaptive去找普通的扩展类
+		若需要增强，用wrapper增强，
+		需要批量激活用activate
+		
+		
+		
+为什么Dubbo有两个Adaptive类，一个是Factory一个Compiler
+细品细品，一个用于生产ExtensionLoader
+		  一个用于动态生成类（Adaptive方法）
+		  
+		  
+		  
+		  
+		  注意注意：compile方法，模板方法，细品，细品，
+		  String code,如果有，如果没有
+		  
+		  
+		  STEP:从code中解析出package
+		  STEP：从code中解析出类名
+		  
+		  
+		  我只能说这个太牛B了，注意老雷实验的Adaptive方法代码，为什么程序会跑到我们的代码里面去了，
+		  设计的好，是可以自己定义，如果自己没有定义，可以自动给你生成
+		  
+		  compile方法去找有没有.class文件，有就直接加载，没有就进行编译code
+		  //step1：尝试着从当前类路径下加载指定类的.class
+		  如果没有：
+		  调用javassistCompiler的doCompile（）方法，通过code进行真正的编译
+		  牛逼：这个思想很牛逼，如果有就走你自己的（但是要按照约定的格式），如果没有，我给你生成
+		  
+		  
+		  创建一个CtClass的构建对象builder
+		  初始化这个builder对象
+		
+		
+		生成完了之后，会缓存到adaptiveInstance里面
+		  
+		  牛人总结：
+					Adaptive总体上作用是根据方法的参数URL获取到普通扩展类的名称name，然后通过getExtension(String name) 获取到实例，然后执行扩展类实例相同名称的方法，自适应就是体现在这里：根据传过过来的URL动态的去找实现类实例。
+					
+					
+					
+					
+		以上就是Dubbo的内核
+		SPI
+			Adaptive
+			Wrapper
+			Activate
+		Compiler
+			javassist
+			
+Dubbo十层：
+	
+
+		xmlns:命名空间 namespace
+		
+		xsi:对应的命名空间，约束.xsd
+		不是通过网络来映射的，文件在哪里呢？
+		dubbo-config-spring
+			spring.schemas
+					http\://dubbo.apache.org/schema/dubbo/dubbo.xsd=META-INF/dubbo.xsd
+					http\://code.alibabatech.com/schema/dubbo/dubbo.xsd=META-INF/compat/dubbo.xsd
+					
+					http\://dubbo.apache.org/schema/dubbo=org.apache.dubbo.config.spring.schema.DubboNamespaceHandler
+					http\://code.alibabatech.com/schema/dubbo=org.apache.dubbo.config.spring.schema.DubboNamespaceHandler
+					
+					DubboNamespaceHandler
+					init方法
+					里面有对应标签和解析器例如：application对应了new DubboBeanDefinitionParser
+					
+					
+			命名：若有了张三，再有重名，应该从张三2开始，不要从张三1开始，就好像struts和struts2一样

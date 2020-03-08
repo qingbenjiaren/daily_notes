@@ -1,0 +1,80 @@
+本地暴露：
+	本地服务暴露，即其暴露的服务只能让
+	
+	exportLocal（URL url）{
+		//对URL进行再构建，构建之前是标准的URL，即registry://...?.....registry=xxx
+		//构建之后就变为了xxx://....
+		URL local = URLBuilder.from(url)
+					.setProtocol(LOCAL_PROTOCOL)
+					.setHost(LOCALHOST_VALUE)
+					.setPort(0)
+					.build();
+					
+					
+					//最后变成injvm的伪协议
+					
+		
+	}
+	
+	
+	DUBBO为什么要用URL，为什么不用json？
+	比较起来，URL更好的地方体现在，不管是消费者调用提供者，还是提供者访问注册中心，都是需要协议的，所以就封装成
+	URL，本质上其实就是字符串，URL的形式更契合与DUBBO的应用场景registry://...?.....registry=xxx
+	
+远程暴露
+	（1）任务：
+		该阶段首先会通过Protocol$Adaptive自适应类自动选择RegistryProtocol来对服务进行暴露注册
+		在RegistryProtocol中对服务暴露的URL进行解析。解析出注册中心的URL与提供者URL。
+		
+	（2）解析：
+		重新返回doExportUrlsFor1Protocol
+		
+		
+		.getParameter("register",true)//如果没有设置，则为true
+		
+完成服务注册：
+	该阶段的任务是将提供者主机的信息写入到zk中，即以接口为节点，在其下再创建用于表示当前提供服务的子节点
+	
+	
+	最终：zkClinet创建节点（临时节点）
+		
+完成真正的服务暴露
+	任务：	
+		1.生成并保存服务暴露对象exporter
+		2.获取/创建ExchangeServer实例。将Dubbo中的同步暴露过程转换为NettyServer的异步过程
+		3.Transport的默认实现是Netty故第三项工作时创建一个nettyServer对服务进行真正的暴露
+		
+		
+	OpenServer是重点
+	
+	一个端口号对应一个netty
+	nettyServer=ip+端口号
+	
+	双重检测锁的妙处，
+	
+	
+	一致跟到doOpen():bossGroup,workerGroup
+	
+	结合到十层架构，妙，真的妙
+	
+	
+服务订阅：
+	获取动态代理对象
+		任务：
+			构建出消费者URL
+			根据消费者的URL构建出其要调用的Invoker
+			通过与Invoker绑定生成消费者代理对象。
+			
+			
+			泛化调用，看回放，看回放，看回放，看回放，很有用，很重要
+			
+			生成代理对象
+			
+			
+			优点：扩展性强，功能强大
+	
+	
+	
+	复习：为什么concurrentHashMap要使用双重检测锁
+		
+	

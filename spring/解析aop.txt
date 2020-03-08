@@ -1,0 +1,34 @@
+如何查找beandefinition Paser，dubbo里面也有
+根据namespaceUri找到NameSpaceHandler
+映射关系正在：handlerMappings
+初始化在：spring.handlers :键值对
+		  spring.schemas
+		  init注册
+		  
+一个目标对象可以增强多个功能
+产生一个代理对象
+增强顺序是什么？
+看源码分析，执行链，前置通知类似队列，后置通知类似栈
+
+
+AOP执行链
+
+AspectJAfterAdvice
+		try{
+			//执行切入点方法
+			return mi.proceed();
+		}finnaly{
+			invokeAdviceMethod();
+		}
+		
+		注意注意注意：这里你想执行都执行不了，为什么呢，因为需要先执行mi.proceed()，等所有的mi.proceed()都执行完了
+		再执行finnaly再执行return
+		
+		
+看before
+MethodBforeAdviceInterceoter implements MethodInterceptor{
+	invoke(MethodInvocation mi){
+		this.advice.before(mi.getMethod,mi.getArguments,mi.getThis());
+		return mi.proceed();
+		}
+}	

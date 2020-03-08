@@ -333,3 +333,62 @@ protected Class<?> getTypeForFactoryBean(final FactoryBean<?> factoryBean) {
 
 
 
+# Aware接口
+
+Aware这个单词翻译过来就是知道，感知的意思。在spring中，它的常见的子接口，比如BeanNameAware、BeanFactoryAware、ApplicationContextAware接口。假设我们的类继承了BeanNameAware这个接口，对应这个接口有一个方法setBeanName的方法，spring在依赖注入的初始化阶段会调用生成对象的这个方法，把beanName传为入参传进来。一般我们在会自己写的类里面定义一个属性来接收这个beanName，然后这个beanName我们就可以在开发中使用了。
+
+给实现这个接口的类，注入一个属性，根据策略模式，Aware的类型，选择注入一个属性，谁实现了Aware谁就有了属性的引用
+
+个人理解，因为我们创建的bean继承BeanFactory接口，所以在我们编写这个bean的实现的时候，就要实现setBeanFactory方法。然后再spring为我们创建该bean的时候，会判断我们是不是实现Aware接口，若是，则会为我们注入相应的属性，我们bean创建好了之后就自然用了了spring为我们创建的属性，例如：beanFactory
+
+
+
+# 循环依赖问题
+
+什么是循环依赖：
+
+循环依赖是针对成员变量----单例才可以解决setter方法循环依赖，多例是无法解决循环依赖。----依靠缓存解决循环依赖，多例不存缓存
+
+构造方法循环依赖--------无法解决，只能将构造依赖改为setter方法依赖
+
+只能将构造依赖改为setter方法依赖
+
+循环调用是针对方法---无法解决的
+
+getBean流程
+		先去缓存中获取对象的bean
+			先去一级缓存查找-----------value：完全初始化完毕的Bean实例
+			没有再去二级缓存查找----------value：只完成bean实例化的bean的实例
+			没有再去三级缓存查找----------value：ObjectFactory。通过该缓存将只完成bean实例化的bean的实例提前暴露（不只是将bean的引用放入缓存中，还需要对该而初始化完成的bean进行beanPostProcessor----动态代理---AOP）
+		如果bean没有再去创建
+		并且将创建之后的bean放入缓存中
+
+疑问一：为什么要有三级缓存：
+	主要是通过二级和三级缓存来解决循环依赖的问题，其中二级缓存和三级缓存是互斥的
+疑问二：
+	三级缓存和二级缓存的区别？
+	二级缓存只要存储beanName和提前暴露的bean实例的映射关系即可
+	三级缓存不仅需要对提前暴露的bean进行返回，还要对该bean做后置处理（beanPostProcessor）。
+	三级缓存将暴露的bean处理完之后，将暴露的bean转移到二级缓存，同时删除三级缓存的数据。
+	三级缓存才是解决循环依赖的根本。
+	
+
+	A对象依赖B对象、B对象依赖A对象
+	
+		1、A对象实例化
+			在1和2之间需要做一个处理，会将刚创建的bean通过beanFactory进行吧暴露，并且将ObjectFactory放入三级缓存
+		2、A对象属性填充
+			A对象给B对象属性进行赋值，需要获取B对象的值getBean()
+				B对象实例化
+				B对象的属性填充
+					B对象给A对象属性进行赋值，需要获取A对象的值getBean()
+					直接从缓存中取出对应的A对象？
+				B对象的初始化
+		3、A对象初始化
+
+
+​		
+
+		引用是可以传递的，提前暴露的Bean和完成初始化成功的Bean其实是一个对象
+
+​	

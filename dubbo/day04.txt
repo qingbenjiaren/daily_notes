@@ -1,0 +1,130 @@
+重要接口和类
+	Invocation：封装了远程调用的基本信息
+		Attachments();//附件
+		getInvoker();
+	Invoker:提供者的代理对象
+		getInterface()
+		
+		
+		Result invoke(Invocation invocation)
+			一个微服务的提供者可能有多个
+		可以作为自适应Adaptive方法的参数
+		
+		可以通过Invocation获取到调用的invoker
+		在调用Invoker的invoke方法时，需要传入Invocation对象
+		
+		本身Invoker代表一个提供者，一个接口的提供者可能是多个，
+		Invoker有时候代表的一堆，有时候代表的是一个
+		getUrl()，可以通过Invoker获取到URL，所以Invoker可以作为自适应Adaptive方法的参数
+	Directory：是一个Invoker的列表，提供某一个微服务的提供者集合就是Directory
+	
+		Clss<T> getInterface()
+		
+		List<Invoker<T>> list(Invocation invocation);
+		
+		
+		RegistryDirectory implement Notify......类
+			其维护着一个动态地Invoker列表，监听了子节点列表，列表一变化，这里的列表也跟着变化
+		MockDirectory extends StaticDirectory 类
+			其维护者一个本地服务降级的Invoker列表
+	Exporter：服务暴露者
+		getInvoker()
+		
+		unExport()取消暴露
+		
+服务发布：
+	从哪里下手：
+		发布的是：<dubbo:service interface="" ref="bean"/>
+		在解析他的时候，就进行发布了
+	服务发布是个什么东西：
+		什么是服务发布：
+		
+			主要做了两件工作：
+				服务暴露：将服务暴露于外部让消费者可以直接调用。具体来说，完成了以下几项工作：
+					形成服务暴露URL：中间有形成Invoker，然后再封装到Exporter中，
+					生成服务暴露实例Exporter
+					通过Netty暴露服务，一个提供者对应的就是一个netty，一个netty可以发布很多服务，但是多个服务都是一个提供者
+					同步转异步     ExchangeServer
+				
+				服务注册：将提供者主机的服务信息写入到zk中。将业务接口作为节点，在其下再创建提供者子节点（临时节点），
+				子节点名称为提供者主机的各种元数据信息。
+				
+	查找入手点：
+		init里面的ServiceBean
+		
+		
+			InitializingBean---->afterPropertiesetre标志着bean实例化完成
+			ApplicationListener
+				onApplicationEvent(E event)
+				
+					spring容器刷新事件监听
+					从这里入手
+					
+					
+					生成提供者代理对象Invoker：
+						//进一步检查和更新配置信息，涉及到大量的配置属性
+						checkAndUpdateSubConfigs();
+						
+						任务
+							这里的任务是生成提供者代理对象Invoker，然后进行暴露
+							Invoker是根据什么形成的呢。
+							首先要形成服务发布URL，然后再使用URL形成提供者Invoker，
+							通过这个URL就可以知道这个服务要发布到哪个注册中心、使用的
+							什么服务暴露协议，服务的真正执行者是谁，等这些元数据信息都可以
+							重URL中读取到。
+							
+						doExportUrls()
+							获取所有注册中心的标准化url
+							遍历配置的所有服务暴露协议
+								pathKey：当前提供者的唯一标识，path，group，version
+						
+								// 构建出zk协议的注册中心URL
+								List<URL> urls = UrlUtils.parseURLs(address,map)，
+								这里为什么是urls呢，因为一个标签可以写多个注册中心，例如集群使用分号或竖线分割address属性值
+								//<dubbo:registry/>的address属性值可以写入多个注册中心地址
+								
+								将非标的注册中心地址，格式化为标准地址
+								非标地址例如：zookeeper://xxxx.xx.xxx.xx
+								标准地址例如：registry://xxx.xx.x.x.x.x.....?...registry=zookeeper
+								
+								若当前是提供者，且该提供者还需要注册（register=true）
+								或者当前不是提供者，且其支持订阅。（subscribe属性为true）.
+								//就将这个url地址对外公开
+								
+										//将每个暴露协议与所有注册中心进行绑定，形成不同的服务暴露URL
+								doExportUrlsFor1Protocol(protocolConfig, registryURLs);
+									String name = protocolConfig.getName();
+									if(StringUtils.isEmpty(name)){
+										name = DUBBO;
+									}
+									
+									获取当前主机的URLhost port
+									URL格式：dubbo://host:port/path?
+									URL url = new URL(name,host,port,getContext()...........)
+									
+									ConfiguratorFactory的扩展类可以对现有的服务暴露协议进行扩展，假设我们要扩展现有的dubbo协议
+									则需要再定义一个扩展类，名称为DubboConfigurationFacotry
+									
+									
+									从URL中获取scope属性值
+									
+									
+									若scope的值不等于remote，则本地暴露
+									若scope的值不等于local，则远程暴露
+										若注册中心不为空，进行远程暴露
+											遍历所有注册中心，使一个暴露协议匹配上一个注册中心，形成一个URL
+												若当前的暴露协议时injvm，就continue，和本地暴露一样
+												
+												//使用URL形成提供者代理对象invoker
+												对invoker进行包装
+												
+												
+								
+								
+		
+		
+		
+		
+		
+		
+		
