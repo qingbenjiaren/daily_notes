@@ -101,10 +101,16 @@
 									获取当前主机的URLhost port
 									URL格式：dubbo://host:port/path?
 									URL url = new URL(name,host,port,getContext()...........)
-									
+									******
 									ConfiguratorFactory的扩展类可以对现有的服务暴露协议进行扩展，假设我们要扩展现有的dubbo协议
 									则需要再定义一个扩展类，名称为DubboConfigurationFacotry
-									
+									dubbo的可扩展性很强
+									if(ExtensionLoader.getExtensionLoader(ConfigurationFactory.class).hasExtension(url.getProtocol)){
+										//如果配置了扩展类，则可以对该协议进行再增强
+										这样的代码很灵活，作为框架设计者，应尽量使架构灵活
+									}
+									****
+									使一个暴露协议配上一个注册中心，形成一个URL
 									
 									从URL中获取scope属性值
 									
@@ -117,6 +123,7 @@
 												
 												//使用URL形成提供者代理对象invoker
 												对invoker进行包装
+												//使用invoker进行远程暴露，并形成暴露的exporter
 												
 												
 								

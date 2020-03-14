@@ -1,0 +1,66 @@
+Dubbo的远程调用+服务路由+服务降级源码解析
+
+
+	封装动态列表，对应上节课的静态列表
+	这里的动态列表就是指的是每隔注册中心的提供者，因为注册中心的提供者是会发生改变的
+	
+	获取动态代理对象
+	
+	
+	获取invoker（重点）
+		
+
+	远程调用：可能会发生路由，降级，容错，均衡
+		InvocationHandler.invoke()
+		
+		如果方法是本地方法，就本地调用，如果重写了，就调用重写方法
+		
+		
+		服务降级：
+			什么是服务降级
+				mock="force:return null"：强制降级
+				mock="fail:return null"：当远程调用失败时，会降级
+				modk="true"：执行本地代码（底层去找Mock实现类）
+				mock=降级类的全限定类名
+	
+	
+	将消费者注册到zk
+	将RouterFactory的所有激活扩展类实例创建的router添加到directory
+	更新Invoker列表（从zk订阅，下载子节点列表）
+	directory.subscribe()
+		总分总：
+			两项工作：
+				1）：为分类节点注册watcher监听，分类节点有三个：providers,routers,configurators
+				//	* providers:提供者
+				//  * routers:路由策略,通过管控平台配置
+				//  * configurators:通过管控平台配置，这个优先级最高，配置的就是那些属性
+				2）：主动更新本地的invoker列表
+					对interface属性指定为正常接口的处理
+					添加watcher监听
+						toCategoriesPath(url):providers,routers,configurators
+						//创建相应的节点若没有
+						
+						//为相应节点添加子节点列表变更的watcher监听
+						//返回值children是相应节点的所有子节点列表
+						
+						将所有子节点添加到urls里面
+						
+						若当前分类节点没有子节点，则构建一个空的
+					主动调用各个节点的watcher的notify()，更新本地的信息
+					notify(url,listener,urls)
+					url：消费者url
+					listener：
+					urls：
+					
+					
+					Map<String,List<URL>> result = new HashMap<>();
+					//key：为分类节点名称
+					//value：为该分类节点下的所有子节点对应的url列表
+					//注意，若没有子节点，其url列表中仅有一个元素，为empty
+					
+					
+					对urls进行过滤
+					
+					
+	//将多个invoker伪装为一个invoker
+	Invoker invoker = 

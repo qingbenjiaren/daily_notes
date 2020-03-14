@@ -60,4 +60,52 @@
 			技术改造与微服务开发
 				若是传统项目改微服务项目，改成dubbo更容易
 				若是从头做的，还是做成Spring Cloud
+				
+				
+				
+课程代码
+provider
+consumer
+	这种直连，如果服务提供者挂了，就出问题了，另外就算没挂，如果消费者很多，那么提供者的效率就会很低
+	者个问题应该怎么解决呢。
+	
+	第三方主机：注册中心：
+	
+	Eureka概述
+		概念
+		CAP定理指的是再一个分布式系统中，C,A,P三者不可兼得
+		
+		Eureka简介
+			Eureka是Nefflix开发的服务发现框架，本身是一个基于REST的服务，主要用于定位运行在AWS（Amazon web services，亚马逊网络服务）域中的中间层服务，以
+			达到负载均衡和中间层服务故障转移的目的。
+			spring cloud将它集成在其子项目spring-cloud-netflix中，实现springcloud的服务发现功能。
+			
+		
+		Eureka和zookeeper对比
+			Eureka保证的是AP，牺牲了一致性，保证了可用性
+			
+			如果所有注册中心都挂了，也可以提供服务，因为每个客户端都有一个服务列表
+			只不过，不能再注册新的服务了
+			Eureka的AP已经做到了极致
+			
+			zookeeper是牺牲了可用性，保证了一致性，在没完成同步之前，不对外提供服务
+			Eureka保证的是AP，牺牲了一致性，保证了可用性，因为Eureka不存在leader和follower及observer
+			
+			Base理论：基本可用，对于用户来说是感知不到CP的
+			
+		Eureka闭源辟谣
+			Eureka2.0流产
+			但是1.0继续开源
+			
+	创建Eureka工程
+	
+	
+		jaxb，java architecture for XML Binding，基于java技术的xml绑定，XML绑定的Java技术。其可以根据XML Schema生成Java类
+		
+		
+	创建服务提供者微服务（springcloud）
+		指定微服务名称
+			
+			
+		
 	

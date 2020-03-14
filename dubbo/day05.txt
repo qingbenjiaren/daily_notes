@@ -1,9 +1,12 @@
+loadRegisters(true);//true表示是提供者
 本地暴露：
-	本地服务暴露，即其暴露的服务只能让
+	本地服务暴露，即其暴露的服务只能让当前提供者主机中相同的JVM中的消费者进行调用，一般用于测试
+	有个伪协议injvm
+	
 	
 	exportLocal（URL url）{
-		//对URL进行再构建，构建之前是标准的URL，即registry://...?.....registry=xxx
-		//构建之后就变为了xxx://....
+		//对URL进行再构建，构建之前是标准的URL，即dubbo://...?.....registry=xxx
+		//构建之后就变为了injvm://....
 		URL local = URLBuilder.from(url)
 					.setProtocol(LOCAL_PROTOCOL)
 					.setHost(LOCALHOST_VALUE)
@@ -47,7 +50,7 @@
 		
 	OpenServer是重点
 	
-	一个端口号对应一个netty
+	一个协议端口号对应一个netty
 	nettyServer=ip+端口号
 	
 	双重检测锁的妙处，
@@ -55,11 +58,25 @@
 	
 	一致跟到doOpen():bossGroup,workerGroup
 	
+	
+	
 	结合到十层架构，妙，真的妙
 	
 	
 服务订阅：
+	proxy:JDK的proxy
 	获取动态代理对象
+	ReferenceBean是一个FactoryBean
+	
+	本地有的，先本地调用
+	
+	
+	把多个invoker伪装成一个invoker，最后表现出来是一个invoker
+	StaticDirectory
+	为什么是静态列表？因为注册中心数量是一定的
+	静态列表针对的是注册中心这个层面，妙，确实妙，因为注册中心一旦启动，就固定了
+	
+	
 		任务：
 			构建出消费者URL
 			根据消费者的URL构建出其要调用的Invoker
@@ -67,6 +84,12 @@
 			
 			
 			泛化调用，看回放，看回放，看回放，看回放，很有用，很重要
+			
+				看回放记的笔记：如果设置了generic，表示可以不用设置interface
+				本地没有对应接口的Class，这个时候可以用泛化调用，generic
+				例如： 实现GenericService接口
+				可以由字符串构成远程调用信息发送出去，本地不需要知道接口，只需要
+				知道接口名，方法名，方法参数，但是本地没有接口，可以用泛化来调用
 			
 			生成代理对象
 			
