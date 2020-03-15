@@ -103,9 +103,293 @@ consumer
 		jaxb，java architecture for XML Binding，基于java技术的xml绑定，XML绑定的Java技术。其可以根据XML Schema生成Java类
 		
 		
+	总结：
+		总步骤：
+			添加eurekaServer依赖
+			在配置文件中配置eureka server
+			在启动类上添加@EnableEurekaServer注解
+		
+		
 	创建服务提供者微服务（springcloud）
 		指定微服务名称
+		
+		看官网的资料：
+			spring-cloud-starter-netflix-eureka-client
 			
 			
+			
+			配置
+			eureka:
+				client:
+					service-url:
+						defaultZone:http://localhost:8000/eureka
+					instance:
+						instance-id:sdsssss-sdsd-8001
+			
+			acturot配置，springboot的配置
+			info:
+				version:1.0
+				app.auth:
+				app.name:
+				company.name:
+				company.info
+			
+			复杂的配置
+			#region与zone的关系是1:n
+			#zone与eureka的关系是1:n
+			
+			eureka:
+				client:
+					region:xxx
+					avalilability-zones:
+						xxx:kkb1,kkb2
+					service-url:
+						kkb1:http://localhost:8000/eureka
+						kkb2:http://localhost:8000/eureka
+						
+						
+	总结：
+		总步骤：
+			添加eurekaClient依赖
+			在配置文件中指定要注册的Eureka Server地址，指定自己的微服务名称
+						
+						
+	定义consumer的eureka配置
+	
+		必须配置负载均衡，在restTemplate上添加负载均衡的配置
+		
+		
+	总结：
+		总步骤：
+			添加eurekaClient依赖
+			在配置文件中指定要注册的Eureka Server地址，指定自己的微服务名称
+			在JavaConfig类中为RestTemplate添加@LoadBalance注解，实现负载均衡
+			修改处理器，将“主机：端口”替换成提供者微服务名称
+					
+					
+	服务发现discovery
+		可以看到，是一个双层map
+		
+	自我保护机制
+		为了保证整个eureka的可用性，在未发送心跳的情况下，注册中心不删除服务提供者，意思是，有可能是服务提供者和注册中心的网络出问题了，并不是说提供者挂了
+		这个时候，服务消费者和服务提供者的网络是没有问题的，所以，不干掉，有可能是注册中心网络出问题了，这就是自我保护机制
+		
+		修改阈值：
+			eureka:
+				server:
+					#指定自我保护机制的开启阈值：
+					#renewal-percent-threshold:0.75
+					#关闭自我保护机制，关闭之后无法保证整个集群的可用性
+					enable-self-preservation:false
+					
+	自我保护机制属性设置：
+		修改阈值：
+			eureka:
+				server:
+					#指定自我保护机制的开启阈值：
+					#renewal-percent-threshold:0.75
+					#关闭自我保护机制，关闭之后无法保证整个集群的可用性
+					enable-self-preservation:false
+					#设置server端剔除不可用服务时间窗，单位毫秒
+					eviction-interval-timer-in-ms: 4000
+					
+					
+					
+		这些属性是哪里找的，是eureka的官网找的，override default configurations
+		github上也可以找到：EurekaClientConfig，里面有一些属性的配置，要学习，可以去看看，springcloud对其的实现
+		
+		system status
+			Renews threshold:记录的是期望的每分钟应该受到客户端续约的数量是多少。  count * 0.85/15 总数低于这个数，就启动自我保护
+			renews (last min)：Eureka实际在最后一分钟收到的客户端续约数量
+			说明：若Renews（last min）< Renews thredshold 就会启动
+			
+			
+	服务离线：
+		服务离线，即某个服务不能对外提供服务了。服务离线的原因有两种：服务下架与服务下线。这两种方案都是基于Actuator监控器实现的。
+		
+		服务下架：将注册到Eureka Server中的Eureka Client从Server的注册表中移除，这样其他Client就无法发现该Client
+		服务下线：Client并没有从Eureka Server的注册表中移除（其实Client仍可发现该服务），而是通过修改服务的状态来达到其他Client
+		无法调用的目的。
+		
+		
+		准备工作
+			添加actuator依赖
+		
+		实现：
+			添加actuator监控
+				management:
+					#开启所有监控终端
+					endpoints:
+						web:
+							exposure:
+								include: "*"
+					#开启shutdown监控终端
+					endpoint:
+						
+						
+				下架：post请求 actuator/shutdown（相当于直接关闭）
+				
+				下线：post请求 actuator/service-    (设置了状态之后，直连仍然可以访问，但是通过注册中心访问，就访问不到了，应为已经down了)
+				（平滑上下线），通过状态来控制服务的上线和下线
+				
+	Eureka集群
+	
+	
+	注意的问题：
+		如果用restTemplate有点不方便，因为不直观
+		
+所以我们要学习使用openFeign
+
+	声明式:rest客户端
+		Feign通过使用JAX-RS或spring mvc 注解的装饰方式，生成接口的动态实现
+		简单来说，就是使用注解来实现rest
+		OpenFeign可以将提供者提供的Restfull服务伪装为接口进行消费，消费者只需要使用feign接口+注解的方式即可直接调用提供者
+		的Restful服务，而无需使用restTemplate，其底层肯定是代理
+		
+		需要注意：
+			Feign只涉及到消费端，与提供者端没有关系
+			Feign仅是一个伪客户端，其不会对请求做任何处理
+			Feign是通过注解的方式，实现restful请求的
+	OpenFeign与Feign
+		D版以前用的是Feign，之后就是OpenFeign
+		
+		
+		总步骤：	
+			添加openFeign依赖
+			定义Feign接口，指定要访问的微服务
+			修改处理器，使用Feign接口来消费微服务
+			将config中的restTemplate的创建方法删除
+			在启动类上添加@EnableFeignClients注解
+			
+		关于Feign接口名：一般情况下都是和业务接口名称相同，但是不是必须的
+		//Feign方法名，一般情况也是和业务接口方法名相同，但是也不是必须的
+		//必须的是参数，返回值类型必须和业务接口相同
+		
+		官网找：
+			override feign default
+			
+			超时和压缩
+			
+			GZIP压缩：feign.compression.request.enable=true
+					  feign.compression.response.enable=true
+					  
+	Ribbon负载均衡
+		默认的方式是轮询
+		修改负载均衡的策略
+			Ribbon内置的负载均衡策略
+				轮询 RoundRobinRule
+				随机：RamdonRule
+				重试策略：RetryRule
+				最可用策略：BestAvaliable
+				可用过滤算法：AvailabilityFilteringRule
+				zone回避：ZoneAvoidanceRule
+				权重响应时间：WeightedResponseTimeRule
+				
+		如何修改：
+			修改配置文件：打Netflix Ribbon开官网，看wiki
+				微服务名称：
+					ribbon：
+						NFLoadBalanceRuleClassName:xxx.xxx.x.xx.RandomRule
+			config配置
+				@Configuration
+					@Bean
+					public IRule loadBalanceRule(){
+						return new RandomRule();
+					}
+					
+			谁的优先级更高？？？
+				configuration的优先级高于配置文件
+				老雷的看法，他觉得应该设置为配置文件更高更好，因为可以随时修改配置文件
+		
+		自定义负载均衡策略
+			先排除，在随机
+			
+服务熔断与服务降级
+	服务熔断是什么：
+		雪崩效应
+			由一个点的崩溃造成了整个系统的崩溃
+			github.com/netflix/hystrix
+		服务雪崩
+			雪崩效应发生在SOA的系统中就叫服务雪崩
+		熔断机制
+			熔断机制是服务雪崩的一种有效解决方案，常见的熔断有两种。
+				预熔断：举例：在我们小时候，经常停电，是为了保证生产用电，会有计划的分片区停电
+				即时熔断：在高并发情况下，指定时间范围内若超过75%的访问出问题了，为了不影响其他服务的调用主动断开该服务的调用，保险丝断了就是即时熔断
+		
+		熔断机制是，消费者端的
+		
+	服务降级
+		服务降级是请求发生问题后的一种增强用户体验的处理方式，不让用户看到莫名其妙的结果
+			举例：写字楼停电，用户体验不好，所以写字楼到处都挂了有应急灯，虽然光线很暗，但是不至于看不见路
+			应急灯的电不是来自电力公司的，不是来自服务提供者的，是消费者本身可以给出的。
+			
+			服务降级的埋点
+				服务路由：在进入到路由之前，按比例进行筛选，只为一般的请求提供服务
+				消费者：
+				数据缓存层：
+				消息中间件：
+				提供者：
+		
+		发生服务熔断，一定会发生服务降级。但发生服务降级，并不意味着一定是发生了服务熔断
+	
+	hystrix简介
+	
+	方法级别的服务降级
+	
+		总步骤：
+			添加Hystrix依赖
+			修改处理器方法，在处理器方法上添加@HystrixCommond注解
+			在处理器中定义服务降级方法
+			在启动类上添加@EnableCircuitBreaker注解，或者直接用springCloudApplication注解
+	
+	类级别的服务降级
+	
+		public class DepartFlallbackFactory implements FallBackFactory<DepartService>{
+			
+		}
+		
+		
+		优先级类级别的比方法级别的高
+		
+		总步骤：
+			添加Hystrix依赖
+			定义服务降级类
+			在Fegin接口中指定服务降级类
+			修改配置文件，开启Fegin对Hystrix的支持
+			在处理器中定义服务降级方法
+			在启动类上添加@EnableCircuitBreaker注解，或者直接用springCloudApplication注解
+		
+			Hystrix高级设置
+				看Hytrix官网
+				默认超时时间是1秒，
+				全局设置
+				hystrix:
+					commond:
+						default:
+				个性化设置
+					在HystrixCommand的注解里，添加属性，具体看代码
+					
+	类级别的服务降级方式二：
+			看代码
+			
+	Hystrix高级属性配置
+	线程执行隔离
+	
+		执行隔离策略有两大作用，防止服务熔断，防止服务雪崩
+		
+		对某种依赖的请求数量进行限制的方式，称为执行隔离
+		
+			线程隔离：
+		
+			信号量隔离：
+		
+学会设置
+	VM options
+		
+	
+
+		
+				
+						
 		
 	
