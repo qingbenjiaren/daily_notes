@@ -1,0 +1,105 @@
+微服务框架Spring cloud H版
+5次课
+	读eureka源码
+	读openfeign源码
+	读ribbon源码
+	
+	
+	读eureka源码
+		从哪里下手：从starter下手，（springcloud是在springboot的基础之上的）
+		从自动化配置下手，找spring.factories
+		老雷的方法：打开eureka的wiki：github.com/Netflix/eureka/。。。看图，搞清楚我们想搞清楚什么问题
+		
+		EurekaClientAutoConfiguration.java下面有很多内部类
+		有什么区别呢：注意看注解的区别
+		@ConditionalOnRefreshScope
+			这个注解的意思是，在配置文件中配置的属性是否存在，默认true，动态刷新
+		@ConditionalOnMissingRefreshScope
+			没有设置，这个值就是false
+		我槽，这个设计真的妙
+		
+		还有一个
+		@ConditionalOnMissingBean(value=EurekaClient.class, search = SerchStrategy.CuRRENT)
+		变成单例
+		加上@org.springframework.cloud.context.config.annotation..RefreshScope
+		变成了原型模式
+		加上@Lazy，延迟
+		
+		最终变成了单例懒加载
+		
+		
+		几个基础的知识：重要的内容
+			InstanceInfo：代表当前的一个客户端（一个主机）
+				instanceId：唯一标识
+				重写了Object中的equals，什么是相同的instanceInfo，只要instanceId相同，就是相等的，只要instanceId不一样，就不是相等的
+			
+			Application：持有了instance列表
+				instancesMap：key为ID，value为对应的instanceInfo
+				instances
+				shuffledInstances
+				
+			Applications：其是从eureka server下载的注册表保存在Client端的形式。简称，客户端注册表
+				appNameApplicationsMap：key是微服务名称，value是对应的Application
+			
+			Jersey框架
+				跟springmvc类似：
+				解析出uri，荣国uri找到相应的处理器
+				实现了JAX-RS，意味着是支持RESTFUL的
+				
+				客户端和服务器端，服务器端和服务器端的通信都是用到jersey
+				
+			Eureka挂了之后，客户端依然可用，因为本地有服务备份，录播课说到了这个问题
+			
+			
+			DiscoveryClient
+				
+				通过一个jersey请求，获取到application列表
+				
+				STEP1:获取本地缓存的applications
+				STEP2:getAndStoreFullRegistry();/getAndUpdate()
+				
+			
+			客户端注册
+				任务
+					最终执行的是post请求，携带了自己的instanceInfo信息
+					
+			初始化定时任务
+				eureka:
+					client:
+						#定时从Eureka Server下载更新本地注册表的时间间隔
+						registry-fetch-interval-seconds: 30
+						#指定client从server更新注册表的最大间隔指数，默认就是10
+						cache-refresh-executor-exponetial-back-off-bound: 10
+						
+						
+				看代码，定时时长和指数这些参数要注意
+				
+				妙啊妙，非常妙
+				future.get(timeoutMillis,TimeUnit.MILLISECONDS)
+				
+				
+				最后有一个finally{
+					if(!scheduler.isShutdown){
+						scheduler.schedule(this,delay.get(),TimeUnit.MILLISECONDS)；
+					}
+					这里太妙了，牛B
+					
+					
+				这里的栈溢出的问题，因为这里面的递归的，没完没了的run了，老雷目前还没注意哪里解决了这个问题？？？？
+				老余要不要来看看
+				}
+				
+				
+			springcloud源码下载：
+				spring.io
+					Projects
+						springcloud
+							Netflix
+								点github的猫猫图标就下载了
+				
+		
+		
+		
+		
+		
+	
