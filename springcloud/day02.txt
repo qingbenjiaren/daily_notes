@@ -1,0 +1,56 @@
+//定时更新注册表
+//刷新注册
+refreshRegistry();
+
+	region变了，就设置两个参数，一个数量一个boolean
+	
+	//增量更新
+	getAndUpdateDelta(applications)
+	
+	
+	instancesMap.put(i.getId(),i)
+	synchronized(instances){
+		instances.remove(i);
+		instances.add(i);
+		isDirty = true;
+	}
+	因为重写了equals方法，所以这里的set里面，i的id相同就为同一个，但是i的id相同，i并不一定相同
+	妙，这里的妙处在重写equals方法和Set内部判断相同是用的equals
+	
+	
+	心跳：
+		boolean renew(){
+			
+		}
+		
+		为什么发送心跳的时候没有找到服务的ID
+		404的问题
+			在后面的“定时更新续约信息”中，若instanceId发生了变更，则client会发出
+			register()请求，此时也会使用新的instanceId发送心跳。
+			
+			这个时候，由于网络原因register请求还未到达server之前，心跳先到了，此时的心跳请求中的instanceId
+			在server的注册表中使找不到的，所以server返回404
+			
+			
+			InstanceInfoReplicator复制器
+			
+			//按需更新
+			instanceInfoReplica.onDemandUpdate()
+				限流更新，超过限制次数之后，就不刷新了
+				
+			为啥定时发送更新的续约信息要复杂一些呢？因为里面加了一个监听器
+			
+			
+			定时任务执行时，在finally中，又把自己加到定时任务里，就可以实现定时调用
+			
+			discoveryClient.refreshInstanceInfo();
+			
+			
+			
+		总结：
+			Eureka Client向Eureka Server提交register（）请求的情况
+				直接提交register()
+				定时发送心跳，若server返回404则client会提交register（）
+				定时更新Client信息给Server。只要client信息发生了变更，就会提交register()(因为有监听)
+	
+	服务下架
