@@ -10,8 +10,22 @@
 		从自动化配置下手，找spring.factories
 		老雷的方法：打开eureka的wiki：github.com/Netflix/eureka/。。。看图，搞清楚我们想搞清楚什么问题
 		
+		重要的bean
+		EurekaClientConfigBean
+		加载的是：
+			eureka.client
+		
+		EurekaInstanceConfigBean
+			读的是instance
+		
+		
+		EurekaClient
+		
+		
 		EurekaClientAutoConfiguration.java下面有很多内部类
 		有什么区别呢：注意看注解的区别
+		@EnableConfigurationProperties
+		
 		@ConditionalOnRefreshScope
 			这个注解的意思是，在配置文件中配置的属性是否存在，默认true，动态刷新
 		@ConditionalOnMissingRefreshScope
@@ -50,13 +64,26 @@
 				
 			Eureka挂了之后，客户端依然可用，因为本地有服务备份，录播课说到了这个问题
 			
+			读源码，了解底层实现，学习设计思路
+			
+			入口：EurekaClient
 			
 			DiscoveryClient
+				下载注册表
+				若下载失败就取本地的
+				谈谈region
+					region与zone是1:n，zone与server是1:n
+					region: beijing
+					availability-zones:
+						beijing:haidian,daxing
+						server-url:
+				fetchRegistry()
+				
 				
 				通过一个jersey请求，获取到application列表
 				
 				STEP1:获取本地缓存的applications
-				STEP2:getAndStoreFullRegistry();/getAndUpdate()
+				STEP2:getAndStoreFullRegistry();/getAndUpdateDelta()
 				
 			
 			客户端注册
