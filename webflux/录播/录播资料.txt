@@ -362,23 +362,226 @@ Reactive Stream编程
 						而是，把其中一个元素拿出来执行完所有中间方法后，在遍历执行第二个中间方法
 						
 						//老雷的描述，学习学习
+						//当所有操作都是无状态时
 						流中的元素对于操作的执行并非是将流中所有元素按照顺序先执行完一个操作，再让所有元素执行完第二个操作
 						而是逐个拿出元素，将所有操作执行完毕之后，再拿出一个元素，将所有操作在执行完毕
 						
-					B、mapToXXX()
+				B、mapToXXX()
 						mapToDouble
 						mapToObject
 						mapToXXX
 				
+				C、flatMap
+					String words = "Beijing welcome you I love china";
+					Stream.of(words.split(" "))
+							.flatMap(word -> word.chars().boxed())//flatMap中的参数为Function,且要求返回类型为Stream
+							.forEach(ch -> System.out.println((char)ch.intVale()))
+					Stream.of(words.split(" "))
+							.flatMap(word -> Stream.of(word.split("")))//flatMap中的参数为Function,且要求返回类型为Stream
+							.forEach(System.out :: println)
+				D、peek()，peek的效果和forEach差不多，只不过peek()是中间操作
+				
+				E、filter
+					String words = "Beijing welcome you I love china";
+					Stream.of(words.split(" "))
+							.filter(word -> word.length > 4)//当过滤条件为true时，当前元素会保留在流中，否则从流中删除
+							.forEach(System.out :: println);
 				
 			有状态操作
 				A、distinct()
 					当前元素是否应该被过滤和之前的元素数据有关系
+					Stream.of(words.split(" "))
+							.flatMap(word -> Stream.of(word.split("")))//flatMap中的参数为Function,且要求返回类型为Stream
+							.distinct()//去除重复字符
+							.forEach(System.out :: println)
 				B。sorted()
 					当前元素是否应该被过滤和之前的元素数据有关系
-			
+					Stream.of(words.split(" "))
+							.flatMap(word -> Stream.of(word.split("")))//flatMap中的参数为Function,且要求返回类型为Stream
+							.sorted()//默认按照字母序进行排序
+							.forEach(System.out :: println)
+							
+					增加比较器
+					Stream.of(words.split(" "))
+							.flatMap(word -> Stream.of(word.split("")))//flatMap中的参数为Function,且要求返回类型为Stream
+							.sorted((d1,d2) -> d1.charAt(0) - d2.charAt(0))//默认按照字母序进行排序
+							.forEach(System.out :: println)
+					Stream.of(words.split(" "))
+							.flatMap(word -> Stream.of(word.split("")))//flatMap中的参数为Function,且要求返回类型为Stream
+							.sorted((d1,d2) -> d2.charAt(0) - d1.charAt(0))//逆序
+							.forEach(System.out :: println)
+				C、skip：跳过
+					Stream.of(words.split(" "))
+							.flatMap(word -> Stream.of(word.split("")))//flatMap中的参数为Function,且要求返回类型为Stream
+							.distinct()//去除重复字符
+							.sorted()
+							.skip(2)//指定跳过n个元素
+							.forEach(System.out :: print)
+							
+				D、特殊的
+					Stream.of(words.split(" "))
+								.flatMap(word -> Stream.of(word.split("")))//flatMap中的参数为Function,且要求返回类型为Stream
+								.distinct()//去除重复字符
+								.peek(System.out :: println)
+								.sorted()
+								.forEach(System.err :: println);
+					无状态操作里混着有状态操作，那么执行顺序应该是怎样呢？
+					结论：
+						以有状态的操作为分水岭
+						
+		
+		流的终止操作
+			终止操作分类
+				终止操作的结束以为着Stream流操作结束。根据操作是否需要遍历流中的所有元素，可以将终止操作划分为短路操作与非短路操作
 				
+				非短路操作
+					A、forEachOrdered
+						String words = "Beijing is the capital of China";
+						Stream.of(words.split(" "))
+								//.forEachOrdered(System.out :: println);//与forEach在串行操作时无区别
+								.forEach(System.out :: println);//与forEach在串行操作时无区别
+					forEachOrdered
+						String words = "Beijing is the capital of China";
+						Stream.of(words.split(" "))
+								.parallel()
+								//.forEachOrdered(System.out :: println);//并行时，有序
+								.forEach(System.out :: println);//并行时，无序
 				
+					B、collect(Collectors.toList());//将流中的元素收集到集合中
+					
+					C、toArray();//收集到数组中
+					
+					D、count();//统计有多少元素
+					
+						String words = "Beijing is the capital of China";
+						Optional<Integer> reduce = Stream.of(words.split(" "))
+								.map(word -> word.length())
+								.reduce((s1,s2) -> s1 + s1);//没两个元素做一个相加，最后变成一个数
+						
+						System.out.println(reduce.get());
+					
+					E、reduce
+						String words = "Beijing is the capital of China";
+						Optional<Integer> reduce = Stream.of(words.split(" "))
+								.map(word -> word.length())
+								.filter(n -> n > 200)
+								.reduce((s1,s2) -> s1 + s1);//没两个元素做一个相加，最后变成一个数
+								
+						System.out.println(reduce.orElse(-1));
+						
+						Integer reduce = Stream.of(words.split(" "))
+								.map(word -> word.length())
+								.filter(n -> n > 200)
+								.reduce(0,(s1,s2) -> s1 + s1);//这样也可以
+								//但是注意，这里不能放-1，因为如果放-1会影响运算，老铁，高效开发不是这那是什么？
+						Stream.of(words.split(" "))
+								.filter(n -> n.length > 200)
+								.reduce(null,(s1,s2) -> s1 + "," + s1);//注意，这种情况会在单词最前面加上一个null,应该用Optional
+					
+					F、max
+						//找一个单词长度最长的单词,注意的是匹配第一个
+						Optional<String> optional = Stream.of(words.split(" ")).max((s1,s2) -> s1.length - s2.length);
+						//找一个单词长度最长的单词，注意匹配的是第一个
+						Optional<String> optional = Stream.of(words.split(" ")).max((s1,s2) -> s2.length - s1.length);
+					G、min
+					
+					
+				短路操作
+					//判断所有单词长度是否大于3
+					Stream.of(words.split(" ")).allMatch(word -> word.length() > 3);//结果为false,只要找到一个不大于3的，就返回了，所以是短路的
+					
+					//是否存在单词长度大于3的单词
+					Stream.of(words.split(" ")).anyMatch(word -> word.length() > 3);//结果为true,只要找到一个大于3的，就返回了，所以是短路的
+					
+					//是否不存在单词长度大于3的单词
+					Stream.of(words.split(" ")).noneMatch(word -> word.length() > 3);//结果为false,只要找到一个大于3的，就返回了，所以是短路的
+					
+					
+					
+					findFirst()
+						Optional<String> optional = Stream.of(words.split(" ")).findFirst();//只要找到第一个就结束查询
+					
+					findAny()
+						Optional<String> optional = Stream.of(words.split(" ")).findAny();//只要找到任意一个就返回
+						
+				收集器：
+					收集器的功能非常强大，强大，强大，强
+					专题介绍
+						public class Student{}{
+							private String name;
+							private String school;
+							private String gender;
+						}
+						
+						private List<Student> students;
+						
+						@Before
+						public void before(){
+							Student student0 = new Student("周零","","");
+							Student student1 = new Student("郑一","","");
+							Student student2 = new Student("吴二","","");
+							Student student3 = new Student("张三","","");
+							Student student4 = new Student("李四","","");
+							Student student5 = new Student("王五","","");
+							Student student6 = new Student("赵六","","");
+							Student student7 = new Student("钱七","","");
+							Student student8 = new Student("秦八","","");
+							Student student9 = new Student("段九","","");
+							
+							students = Arrays.asList();
+						}
+						
+						@Test
+						public void test01(){
+							//获取所有学生名单
+							students.stream.map(Student :: getName).collect(Collectors.toList());
+							
+							students.stream.map(Student :: getSchool).distinct().collect(Collectors.toList());
+							students.stream.map(Student :: getSchool).collect(Collectors.toSet());//用的HashSet
+							
+							//指定treeSet
+							students.stream.map(Student :: getSchool).collect(Collectors.toCollection(TreeSet :: new));
+							
+							//返回map
+							Map<String, List<Student>> map = students.stream.collect(Collectors.groupingBy(Student :: getSchool));
+							
+							//添加appach.commons Collections
+							//使用工具类显示map中的key-value
+							MapUtils.verbosePrint(System.out ,"学校" , map)
+							
+							
+						}
+						
+						//统计各个学校人数
+						Map<String,Long> schoolCount = students.stream.collect(Collectors.groupingBy(Student :: getSchool.Collections.counting()))
+						
+						
+						//分块
+						//按照性别分组
+						Map<String, List<Student>> map = students.stream.collect(Collectors.groupingBy(Student :: getGender));
+						
+						Map<Boolean, List<Student>> map = students.stream.collect(Collectors.partitioningBy(s -> "男".equals(s.getGender())));
+						//返回值得key是：true    false
+						//分块是分组的一种特殊情况
+						
+						
+						//按95位标准，分组
+						Map<Boolean, List<Student>> map = students.stream.collect(Collectors.partitioningBy(s -> s.getScore() > 95)));
+						//返回值得key是：true    false
+						
+						//按95分组，计算平均分
+						Map<Boolean, Double> map = students.stream.collect(Collectors.partitioningBy(s -> s.getScore() > 95,Collectors.averagingDouble(Student :: getScore))));
+						
+						
+						//
+						DoubleSummaryStatistics scoreSummary = students.stream.collect(Collectors.summarizingDouble(Student :: getScore);
+						
+						
+						
+						
+						
+						
+					
 					
 								
 					
