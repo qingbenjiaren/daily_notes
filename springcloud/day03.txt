@@ -1,0 +1,31 @@
+
+题外话：
+	dubbo：软负载，硬负载
+		软负载是相对于硬负载来说的，面试官问的软负载可能是说的NGIX
+	
+
+
+spring cloud服务端
+	从starter开始说
+	InstanceStatus
+		UP,
+		DOWN,
+		STARTING,
+		OUT_OF_SERVICE,
+		UNKNOWN
+		
+基础知识：
+	(1)InstanceInfo
+		就代表一个Eureka Client
+		
+		lastDirtyTimestamp：记录当前instance在Client端的最后修改时间
+		lastUpdatedTimestamp：记录当前instance在Server端的最后修改时间
+		
+		status：当前instance的存活状态（服务状态）
+		overriddenStatus：可覆盖状态，是用户修改instance时使用的状态
+		
+	instanceResource
+	
+		isReplication:是客户端发送的请求还是服务端的复制请求
+		Lease：续约对象
+	
