@@ -1,0 +1,210 @@
+参数绑定处理
+	将请求参数串中的value值获取到之后，再进行类型转换，然后将转换后的值赋值给Controller类中方法的形参，这个过程就是参数绑定
+	
+	总结参数绑定需要两步：
+		类型转换（请求中的String类型值---->Controller各种数据类型的方法形参）
+		赋值操作，将转换之后的值赋值给Controller方法形参
+	
+	使用要求
+		简单类型
+			直接绑定，只需要将形参的名称与url中的key保持一致就行
+		
+		
+		注解绑定
+			@RequestParam
+			required
+			defaultValue
+			
+		POJO类型
+			key与POJO中的属性名称保持一致
+		
+		？id=1&id=2&id=3
+			用数组接收，或者POJO中数组接收
+			
+		List<Object> 只能用POJO对象接收，在对象中定义一个集合
+		
+		
+		自己写转换器
+			实现Convert接口，然后再配置以下，看录播文档
+			
+	文件类型
+		借助于第三方工具，加依赖包
+		<dependency>
+			<>commons-fileupload</>
+			<>commons-fileupload</>
+			<><>
+		</dependency>
+		
+		JSP中的form表单需要制定enctype="multipart/form-data"
+		
+		配置Multipart解析器（多部件解析器）
+		id必须是它，必须显示指定
+		<bean id="multipartResolver" class="org.springframework.web.multipart.commons.CommonsMultipartResolver>
+			<!--上传文件的最大尺寸 5M -->
+			<property name="maxUploadSize" value="5343880"/>单位是字节
+		</bean>
+		
+		程序编码：
+		@RequestMapping("fileupload")
+		public String findUserById(MultipartFile uploadFile){
+			//编写文件上传逻辑(mvc模式和三层架构模式)
+			//三层模式：表现层（controller,action）、业务层(service、biz)、持久层(dao、mapper)
+			//MVC模式主要就是来解决表现层问题的（原始的表现层是servlet编写，既有业务逻辑也有视图展示）
+			if(uploadFile != null){
+				String originalFilename = uploadFile.getOriginalFilename();
+				
+				if(){
+					String picPath = "E:\\";
+					String extName = originalFilename.subString(originalFilename.lastIndexOf("."));
+					String newFileName = UUID.randomUUID() + extName;
+					//新的文件
+					File newFile = new File(picPath + newFileName);
+					uploadFile.transferTo(new File);
+				}
+			}
+		}
+			
+@RequestMapping属性
+	请求URL映射
+	窄化请求映射
+	
+	
+	method属性
+		@RequestMapping（value="/findItem",method = RequestMethod.GET）
+		@RequestMapping（value="/findItem",method = RequestMethod.POST）
+		@RequestMapping（value="/findItem",method = {RequestMethod.GET,RequestMethod.POST}）
+		
+		新版本直接用GetMapping,PostMapping等等
+		这是restful风格，注意这种风格的特点是，用行为来表示动作，而不要显示加上动作本身
+		
+		@RequestMapping（value="remodeItem",params={"name",xxx>11}）
+		
+	RESTful支持
+		拦截方式设置为“/”
+		
+		
+		URI:统一资源标识符
+		URL:统一资源定位符
+		
+		什么是REST:Representational State Transfer，（资源）表述状态转化，描述了一个架构样式的网络系统
+		是一种架构风格、设计风格，而不是标准，只是提供了一组设计原则和约束条件。它主要用于客户端和服务器交互类的软件，
+		基于这种风格设计的软件可以更简洁，更有层次，更易于实现缓存等机制
+		其核心价值在于如何设计出符合REST风格的网络接口
+		
+	什么是RESTful
+		REST指的是一组架构的约束条件和原则，满足这些约束条件和原则的应用成簇或设计就是RESTful。
+		
+	RESTful的特性
+		资源，
+			网络上的一个实体，或者说网络上的一个具体信息
+		
+		表现层
+			
+		状态转化
+			GET/POST/PUT/DELETE
+			
+	如何设计RESTful风格的架构
+		路径设计：数据库设计完毕之后，基本上就可以确定有哪些资源要进行操作，相对于的路径也可以设计出来
+		动词设计：也就是针对资源的具体操作类型，有HTTP动词表示，常用的：POST/GET/DELETE/PUT
+		
+		/account/1 HTTP:GET
+		/account/1 HTTP:DELETE
+		/account   HTTP:POST
+		/account   HTTP:PUT
+		
+		
+	SpringMVC对RESTful的支持
+		获取路径参数
+		@GetMapping("{id}/{name}")
+		public Item queryItemById(@PathVariable Integer id,@PathVariable String name){
+			
+		}
+		
+	RESTful的资源表述
+		内容协商管理器
+			请求头Accept参数：比如设置Accept为application/json表示要JSON格式
+		
+	静态资源配置
+		静态资源访问mvc:resources
+		<mvc:resources location="/js/" mapping="/js/"
+		
+拦截器
+	处理器映射器
+	
+	处理器拦截器是针对处理器映射器进行配置的
+	由该处理器映射器查找到的处理器都会使用到配置在该处理器映射器中的处理器拦截器
+	
+	处理器拦截器拥有三个方法，分别是:
+	preHandle
+	postHandler   没有处理ModelAndView之前
+	afterCompletion
+	
+	怎么用
+		实现HandlerInterceptor接口
+		实现之后有三个方法
+		preHandler返回值boolean，判断是否能找到处理器
+		全局处理器拦截器
+		<mvc:interceptors>
+		<!--公共拦截器可以拦截所有请求，而且可以有多个-->
+			<bean class = "xxxxx">
+			<bean class = "xxxxx">
+			<!--如果有针对特定URL的拦截器，则进行以下配置-->
+			<mvc:interceptor>
+				<!--/**表示所有URL和子URL路径-->
+				<mvc:mapping path="/order/**"
+				<bean class = "">
+				<>
+				<>
+	
+	
+	多拦截器拦截规则
+		实现登录认证
+			如果请求的URL是公开地址（无需登录就可以访问的URL）采取放行
+			如果用户session存在，放行
+			不放行，跳转到登录页面
+			
+基于cors的跨域解决方案
+	什么是跨域
+		浏览器因为安全考虑，所以设置了同源策略。同源策略简单理解就是DNS域名，端口号，协议完全相同就称为同源。同源下的
+		页面之间才能进行js的dom操作，如果不在同一个源下任何跨文档dom访问都是被阻止的。不同源下的访问可以称为跨域访问
+		
+		
+		下面的a.js是无法获取b.js的内容
+		情况				举例
+		端口号不同
+		主域相同子域不同
+		协议不同
+		域名不同
+		域名和对应IP
+		
+		
+		在实际应用中，多数出现在ajax请求，在不同域下请求数据会遇到禁止跨域的问题
+		
+		为什么要有同源策略
+		
+		
+		如何解决跨域
+		
+		什么是CORS
+			跨域资源共享
+			我们考虑的是服务器端怎么支持
+				spring4以后
+					在类上或者方法上，加上@CrossOrigin
+					全局
+					<mvc:cors>
+					
+					//允许对方待cookie访问
+					
+	父子容器
+		两个不同类加载的配置文件才会产生父子容器
+		DispatcherServlet产生子容器
+		COntextLoaderListener产生父容器
+		
+		父子容器之间的关系
+			子容器可以获取子容器的对象进行操作
+			父容器不能获取子容器的对象进行操作
+			
+			placehoder不能共享
+					
+			
+		
