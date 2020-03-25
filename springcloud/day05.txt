@@ -1,0 +1,136 @@
+Openfeign伪客户端
+	重要类与接口解析
+		@EnableFeignClients
+		
+		Feign Client创建
+			jdk proxy
+			
+		发出网络请求
+			invoke
+		负载均衡
+			先对接口做代理，再负载均衡
+			
+	老雷读源码，读得注释最多
+	
+	
+	重要的类
+		EnableFeignClients注解//开启所有FeignClient,控制全局
+			读注释
+			basepackageClass = One.class 意味着，去扫描One所在的包
+			
+			defaultConfiguration
+		
+		FeignClient注解//控制某一个Client
+			name
+			value
+			serviceId
+			contextId
+			以上四个主要是版本升级留下来的，这样设计没问题
+			url:可选前缀
+			qualifer   byName
+			decode404	发生异常了是否用404替换
+			configuration
+			path			加了path就不用加类级别上的RequstMapping了
+			primary		是否标记这个feignProxy作为首选bean，有了这个在多个实现类时就可以byType了
+			
+		FeignClientSpecification FeignClient的规范,有名称有配置
+			private String name;
+			Class<?> configuration;
+			
+		Beandefinition
+			通过BeanDefinition可以生成一个bean
+		BeanDefinitionRegistry
+			BeanDefinition注册中心
+		FeignContext
+			上下文，可获取Feign创建所需要的的资源
+			context:key 微服务名称  spring容器
+				意思是，context的意思是，为每一个微服务提供一个spring容器
+			configurations
+				这个map中包含两类元素，第一类只有一个，其key为default启动类名，value为@EnableFeignClients的defaultConfiguration的值
+				第二类有多个，
+		
+		
+	FeignClient的创建
+		配置注册
+		registerBeanDefinition
+		先注册BeanDefinition
+		metadata： 好处是不用提前加载类
+		
+		有意思：
+			迭代稳定
+				妙
+				在对list操作时，新建一个list，在新的list上操作，
+				而原来的list留给其他正在使用的线程使用
+				读别人的代码的好处是什么，学习学习
+				保证正在读的，读的是没有发生变更的数据
+				synchronized(){
+					List<String> newList = new ArrayList<>(this.oldList.size()+1);
+					newList.addAll(oldList);
+					newList.add("");
+					oldList = newList;
+				}
+				妙啊妙，那么问题来了，为什么不用线程安全的list
+				因为如果那样写代码的话，效率会很低
+				
+				只在写的时候加个锁，其他地方可以照常使用
+				
+				问题二：
+					为什么不用双重检测锁
+					因为功能不一样，双重检测所的应用场景是防止多线程重复操作，只要有一个改了，其他线程就不用改了
+					而这里是允许多线程改的，只是要一个一个来
+					
+				removeManualSingleton
+				
+				最后manualSingletonNames里面只保存只有一个的
+				
+				这里有一个方法很牛B
+					有一个方法传了两个参数，一个Consumer 一个Predicate
+					
+					
+				说了这么多，实际上说的是一个注册
+				
+				
+				
+			内部类：
+			普通名称：com.abc.Some$Inner
+			规范名称：com.abc.Some.Inner
+			
+			数组类：Class array = new Object[5].getClass();
+			普通名称：[Ljava.lang.Object
+			规范名称：java.lang.Object[]
+			
+			
+			按优先级获取ClientName，为什么这样设计，是为了兼容老版本
+			如果要做老版本升级可以借鉴者个思路，兼容问题
+			
+			
+			
+			
+	完成自动配置
+		
+		
+		FeignClientFactoryBean
+			getObject()
+			
+			
+	Feign还可以直连，注解上添加url属性
+	
+	
+	
+	
+	
+	
+老雷的总结：
+	读了这么多源码，springcloud要么从注解开始找，要么重starter开始找，
+	一定要养成一个习惯，有了问题一定不要马上去百度上搜，源码的注释很重要，读源码的注释实际上
+	是与作者的灵魂的沟通
+老余的总结：
+	过程很困难，老詹说的时候我没意识到，很难很难，但是我要赢难而上，
+	战胜了困难我就成了，同一件事情，如果很多高手都提起了，我就不能不重视，
+	迎难而上，迎难而上，赢难而上，赢难而上
+	我明白了一个道理，真的，熟读唐诗三百首的道理
+	加油吧，不要好高骛远，2020年，厚积薄发，如果不知道未来在哪里，
+	那么我就更应该继续前行，脚踏实地，远方就是未来，无怨无悔。
+	2020年，养成读源码的习惯
+	
+	
