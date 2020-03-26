@@ -1,0 +1,54 @@
+<configuration>
+  <conversionRule conversionWord="coloredLevel" converterClass="com.lightbend.lagom.internal.logback.ColoredLevel"/>
+
+  <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <file>${application.home:-.}/logs/application.log</file>
+    <rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
+      <fileNamePattern>logs/application.%i.log.zip</fileNamePattern>
+      <minIndex>1</minIndex>
+      <maxIndex>12</maxIndex>
+    </rollingPolicy>
+
+    <triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
+      <maxFileSize>5MB</maxFileSize>
+    </triggeringPolicy>
+    <encoder>
+      <charset>UTF-8</charset>
+      <pattern>%date [%level] fromId %logger in %thread - %message%n%xException</pattern>
+    </encoder>
+  </appender>
+
+  <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder>
+      <charset>UTF-8</charset>
+      <pattern>%date %coloredLevel %logger{15} in %thread - %message%n%xException{10}</pattern>
+    </encoder>
+  </appender>
+
+  <appender name="ASYNCFILE" class="ch.qos.logback.classic.AsyncAppender">
+    <discardingThreshold>0</discardingThreshold>
+    <queueSize>512</queueSize>
+    <appender-ref ref="FILE"/>
+  </appender>
+
+  <appender name="ASYNCSTDOUT" class="ch.qos.logback.classic.AsyncAppender">
+    <appender-ref ref="STDOUT"/>
+  </appender>
+
+
+  <logger name="play" level="INFO"/>
+  <logger name="application" level="DEBUG"/>
+  <logger name="ytd" level="DEBUG"/>
+
+  <!-- Off these ones as they are annoying, and anyway we manage configuration ourselves -->
+  <logger name="com.avaje.ebean.config.PropertyMapLoader" level="OFF"/>
+  <logger name="com.avaje.ebeaninternal.server.core.XmlConfigLoader" level="OFF"/>
+  <logger name="com.avaje.ebeaninternal.server.lib.BackgroundThread" level="OFF"/>
+  <logger name="com.gargoylesoftware.htmlunit.javascript" level="OFF"/>
+
+  <root level="INFO">
+    <appender-ref ref="ASYNCFILE"/>
+    <appender-ref ref="ASYNCSTDOUT"/>
+  </root>
+
+</configuration>
