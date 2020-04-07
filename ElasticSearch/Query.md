@@ -769,3 +769,700 @@ GET /_search
 ```
 
 The `fuzziness` parameter cannot be used with the `phrase` or `phrase_prefix` type.
+
+#### cross_fields
+
+The `cross_fields` type is particularly useful with structured documents where multiple fields **should** match. For instance, when querying the `first_name` and `last_name`fields for “Will Smith”, the best match is likely to have “Will” in one field and “Smith” in the other.
+
+```
+This sounds like a job for most_fields but there are two problems with that approach. The first problem is that operator and minimum_should_match are applied per-field, instead of per-term (see explanation above).
+
+The second problem is to do with relevance: the different term frequencies in the first_name and last_name fields can produce unexpected results.
+
+For instance, imagine we have two people: “Will Smith” and “Smith Jones”. “Smith” as a last name is very common (and so is of low importance) but “Smith” as a first name is very uncommon (and so is of great importance).
+
+If we do a search for “Will Smith”, the “Smith Jones” document will probably appear above the better matching “Will Smith” because the score of first_name:smith has trumped the combined scores of first_name:will plus last_name:smith.
+```
+
+One way of dealing with these types of queries is simply to index the `first_name` and `last_name` fields into a single `full_name` field. Of course, this can only be done at index time.
+
+The `cross_field` type tries to solve these problems at query time by taking a *term-centric* approach. It first analyzes the query string into individual terms, then looks for each term in any of the fields, as though they were one big field.
+
+A query like:
+
+```json
+GET /_search
+{
+  "query": {
+    "multi_match" : {
+      "query":      "Will Smith",
+      "type":       "cross_fields",
+      "fields":     [ "first_name", "last_name" ],
+      "operator":   "and"
+    }
+  }
+}
+```
+
+is executed as:
+
+```
++(first_name:will  last_name:will)
++(first_name:smith last_name:smith)
+```
+
+In other words, **all terms** must be present **in at least one field** for a document to match. (Compare this to [the logic used for `best_fields` and `most_fields`](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-multi-match-query.html#operator-min).)
+
+Note that cross_fields is usually only useful on short string fields that all have a boost of 1. Otherwise boosts, term freqs and length normalization contribute to the score in such a way that the blending of term statistics is not meaningful anymore.
+
+#### cross_field and analysis
+
+The `cross_field` type can only work in term-centric mode on fields that have the same analyzer. Fields with the same analyzer are grouped together as in the example above. If there are multiple groups, they are combined with a `bool`query.
+
+#### bool_prefix
+
+bool_prefix类型的评分行为与most_fields相似，但是使用match_bool_prefix查询而不是match查询。
+
+```json
+GET /_search
+{
+  "query": {
+    "multi_match" : {
+      "query":      "quick brown f",
+      "type":       "bool_prefix",
+      "fields":     [ "subject", "message" ]
+    }
+  }
+}
+```
+
+### Common Terms Query
+
+> Use [Match](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-match-query.html) instead, which skips blocks of documents efficiently, without any configuration, provided that the total number of hits is not tracked.
+
+The `common` terms query is a modern alternative to stopwords which improves the precision and recall of search results (by taking stopwords into account), without sacrificing performance.
+
+#### The problem
+
+Every term in a query has a cost. A search for `"The brown fox"` requires three term queries, one for each of `"the"`, `"brown"` and `"fox"`, all of which are executed against all documents in the index. The query for `"the"` is likely to match many documents and thus has a much smaller impact on relevance than the other two terms.
+
+Previously, the solution to this problem was to ignore terms with high frequency. By treating `"the"` as a *stopword*, we reduce the index size and reduce the number of term queries that need to be executed.
+
+The problem with this approach is that, while stopwords have a small impact on relevance, they are still important. If we remove stopwords, we lose precision, (eg we are unable to distinguish between `"happy"` and `"not happy"`) and we lose recall (eg text like `"The The"` or `"To be or not to be"`would simply not exist in the index).
+
+#### The solution
+
+The `common` terms query divides the query terms into two groups: more important (ie *low frequency* terms) and less important (ie *high frequency* terms which would previously have been stopwords).
+
+First it searches for documents which match the more important terms. These are the terms which appear in fewer documents and have a greater impact on relevance.
+
+Then, it executes a second query for the less important terms — terms which appear frequently and have a low impact on relevance. But instead of calculating the relevance score for **all** matching documents, it only calculates the `_score` for documents already matched by the first query. In this way the high frequency terms can improve the relevance calculation without paying the cost of poor performance.
+
+If a query consists only of high frequency terms, then a single query is executed as an `AND` (conjunction) query, in other words all terms are required. Even though each individual term will match many documents, the combination of terms narrows down the resultset to only the most relevant. The single query can also be executed as an `OR` with a specific [`minimum_should_match`](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-minimum-should-match.html), in this case a high enough value should probably be used.
+
+Terms are allocated to the high or low frequency groups based on the `cutoff_frequency`, which can be specified as an absolute frequency (`>=1`) or as a relative frequency (`0.0 .. 1.0`). (Remember that document frequencies are computed on a per shard level as explained in the blog post [Relevance is broken](https://www.elastic.co/guide/en/elasticsearch/guide/2.x/relevance-is-broken.html).)
+
+Perhaps the most interesting property of this query is that it adapts to domain specific stopwords automatically. For example, on a video hosting site, common terms like `"clip"` or `"video"` will automatically behave as stopwords without the need to maintain a manual list.
+
+#### Example
+
+In this example, words that have a document frequency greater than 0.1% (eg `"this"` and `"is"`) will be treated as *common terms*.
+
+```java
+GET /_search
+{
+    "query": {
+        "common": {
+            "body": {
+                "query": "this is bonsai cool",
+                "cutoff_frequency": 0.001
+            }
+        }
+    }
+}
+```
+
+The number of terms which should match can be controlled with the [`minimum_should_match`](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-minimum-should-match.html) (`high_freq`, `low_freq`), `low_freq_operator` (default `"or"`) and `high_freq_operator` (default `"or"`) parameters.
+
+For low frequency terms, set the `low_freq_operator` to `"and"` to make all terms required:
+
+```json
+GET /_search
+{
+    "query": {
+        "common": {
+            "body": {
+                "query": "nelly the elephant as a cartoon",
+                "cutoff_frequency": 0.001,
+                "low_freq_operator": "and"
+            }
+        }
+    }
+}
+```
+
+which is roughly equivalent to:
+
+```json
+GET /_search
+{
+    "query": {
+        "bool": {
+            "must": [
+            { "term": { "body": "nelly"}},
+            { "term": { "body": "elephant"}},
+            { "term": { "body": "cartoon"}}
+            ],
+            "should": [
+            { "term": { "body": "the"}},
+            { "term": { "body": "as"}},
+            { "term": { "body": "a"}}
+            ]
+        }
+    }
+}
+```
+
+Alternatively use [`minimum_should_match`](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-minimum-should-match.html) to specify a minimum number or percentage of low frequency terms which must be present, for instance:
+
+```json
+GET /_search
+{
+    "query": {
+        "common": {
+            "body": {
+                "query": "nelly the elephant as a cartoon",
+                "cutoff_frequency": 0.001,
+                "minimum_should_match": 2
+            }
+        }
+    }
+}
+```
+
+which is roughly equivalent to:
+
+```json
+GET /_search
+{
+    "query": {
+        "bool": {
+            "must": {
+                "bool": {
+                    "should": [
+                    { "term": { "body": "nelly"}},
+                    { "term": { "body": "elephant"}},
+                    { "term": { "body": "cartoon"}}
+                    ],
+                    "minimum_should_match": 2
+                }
+            },
+            "should": [
+                { "term": { "body": "the"}},
+                { "term": { "body": "as"}},
+                { "term": { "body": "a"}}
+                ]
+        }
+    }
+}
+```
+
+A different [`minimum_should_match`](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-minimum-should-match.html) can be applied for low and high frequency terms with the additional `low_freq` and `high_freq` parameters. Here is an example when providing additional parameters (note the change in structure):
+
+```json
+GET /_search
+{
+    "query": {
+        "common": {
+            "body": {
+                "query": "nelly the elephant not as a cartoon",
+                "cutoff_frequency": 0.001,
+                "minimum_should_match": {
+                    "low_freq" : 2,
+                    "high_freq" : 3
+                }
+            }
+        }
+    }
+}
+```
+
+which is roughly equivalent to:
+
+```json
+GET /_search
+{
+    "query": {
+        "bool": {
+            "must": {
+                "bool": {
+                    "should": [
+                    { "term": { "body": "nelly"}},
+                    { "term": { "body": "elephant"}},
+                    { "term": { "body": "cartoon"}}
+                    ],
+                    "minimum_should_match": 2
+                }
+            },
+            "should": {
+                "bool": {
+                    "should": [
+                    { "term": { "body": "the"}},
+                    { "term": { "body": "not"}},
+                    { "term": { "body": "as"}},
+                    { "term": { "body": "a"}}
+                    ],
+                    "minimum_should_match": 3
+                }
+            }
+        }
+    }
+}
+```
+
+In this case it means the high frequency terms have only an impact on relevance when there are at least three of them. But the most interesting use of the [`minimum_should_match`](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-minimum-should-match.html)for high frequency terms is when there are only high frequency terms:
+
+```json
+GET /_search
+{
+    "query": {
+        "common": {
+            "body": {
+                "query": "how not to be",
+                "cutoff_frequency": 0.001,
+                "minimum_should_match": {
+                    "low_freq" : 2,
+                    "high_freq" : 3
+                }
+            }
+        }
+    }
+}
+
+```
+
+which is roughly equivalent to:
+
+```json
+GET /_search
+{
+    "query": {
+        "bool": {
+            "should": [
+            { "term": { "body": "how"}},
+            { "term": { "body": "not"}},
+            { "term": { "body": "to"}},
+            { "term": { "body": "be"}}
+            ],
+            "minimum_should_match": "3<50%"
+        }
+    }
+}
+```
+
+
+
+### Query string query
+
+Returns documents based on a provided query string, using a parser with a strict syntax.
+
+This query uses a [syntax](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-query-string-query.html#query-string-syntax) to parse and split the provided query string based on operators, such as `AND` or `NOT`. The query then [analyzes](https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis.html) each split text independently before returning matching documents.
+
+You can use the `query_string` query to create a complex search that includes wildcard characters, searches across multiple fields, and more. While versatile, the query is strict and returns an error if the query string includes any invalid syntax.
+
+> Because it returns an error for any invalid syntax, we don’t recommend using the `query_string` query for search boxes.
+>
+> If you don’t need to support a query syntax, consider using the [`match`](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-match-query.html) query. If you need the features of a query syntax, use the [`simple_query_string`](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-simple-query-string-query.html) query, which is less strict.
+
+### Example request
+
+When running the following search, the `query_string` query splits `(new york city) OR (big apple)` into two parts: `new york city` and `big apple`. The `content` field’s analyzer then independently converts each part into tokens before returning matching documents. Because the query syntax does not use whitespace as an operator, `new york city` is passed as-is to the analyzer.
+
+```json
+GET /_search
+{
+    "query": {
+        "query_string" : {
+            "query" : "(new york city) OR (big apple)",
+            "default_field" : "content"
+        }
+    }
+}
+```
+
+#### Top-level parameters for query_string
+
+##### query
+
+(Required, string) Query string you wish to parse and use for search. See [Query string syntax](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-query-string-query.html#query-string-syntax).
+
+##### default_field
+
+(Optional, string) Default field you wish to search if no field is provided in the query string.
+
+Defaults to the `index.query.default_field` index setting, which has a default value of `*`. The `*` value extracts all fields that are eligible to term queries and filters the metadata fields. All extracted fields are then combined to build a query if no `prefix` is specified.
+
+> There is a limit on the number of fields that can be queried at once. It is defined by the `indices.query.bool.max_clause_count`[search setting](https://www.elastic.co/guide/en/elasticsearch/reference/current/search-settings.html), which defaults to 1024.
+
+##### allow_leading_wildcard
+
+(Optional, boolean) If `true`, the wildcard characters `*`and `?` are allowed as the first character of the query string. Defaults to `true`.
+
+##### analyze_wildcard
+
+(Optional, boolean) If `true`, the query attempts to analyze wildcard terms in the query string. Defaults to `false`.
+
+##### analyzer
+
+(Optional, string) [Analyzer](https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis.html) used to convert text in the query string into tokens. Defaults to the [index-time analyzer](https://www.elastic.co/guide/en/elasticsearch/reference/current/specify-analyzer.html#specify-index-time-analyzer) mapped for the `default_field`. If no analyzer is mapped, the index’s default analyzer is used.
+
+##### auto_generate_synoyms_phrase_query
+
+(Optional, boolean) If `true`, [match phrase](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-match-query-phrase.html) queries are automatically created for multi-term synonyms. Defaults to `true`. See [Synonyms and the `query_string`query](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-query-string-query.html#query-string-synonyms) for an example.
+
+##### boost
+
+(Optional, float) Floating point number used to decrease or increase the [relevance scores](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-filter-context.html#relevance-scores) of the query. Defaults to `1.0`.
+
+Boost values are relative to the default value of `1.0`. A boost value between `0` and `1.0` decreases the relevance score. A value greater than `1.0` increases the relevance score.
+
+##### default_operator
+
+(Optional, string) Default boolean logic used to interpret text in the query string if no operators are specified. Valid values are:
+
+- **`OR` (Default)**
+
+  For example, a query string of `capital of Hungary`is interpreted as `capital OR of OR Hungary`.
+
+- **`AND`**
+
+  For example, a query string of `capital of Hungary`is interpreted as `capital AND of AND Hungary`.
+
+##### enable_position_increments
+
+(Optional, boolean) If `true`, enable position increments in queries constructed from a `query_string` search. Defaults to `true`.
+
+##### fields
+
+(Optional, array of strings) Array of fields you wish to search.
+
+You can use this parameter query to search across multiple fields. See [Search multiple fields](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-query-string-query.html#query-string-multi-field).
+
+##### fuzziness
+
+(Optional, string) Maximum edit distance allowed for matching. See [Fuzziness](https://www.elastic.co/guide/en/elasticsearch/reference/current/common-options.html#fuzziness) for valid values and more information.
+
+##### fuzzy_max_expansions
+
+(Optional, integer) Maximum number of terms to which the query expands for fuzzy matching. Defaults to `50`.
+
+##### fuzzy_prefix_length
+
+(Optional, integer) Number of beginning characters left unchanged for fuzzy matching. Defaults to `0`.
+
+##### fuzzy_transpositions
+
+(Optional, boolean) If `true`, edits for fuzzy matching include transpositions of two adjacent characters (ab → ba). Defaults to `true`.
+
+##### lenient
+
+(Optional, boolean) If `true`, format-based errors, such as providing a text value for a [numeric](https://www.elastic.co/guide/en/elasticsearch/reference/current/number.html) field, are ignored. Defaults to `false`.
+
+##### max_determinized_states
+
+(Optional, integer) Maximum number of [automaton states](https://en.wikipedia.org/wiki/Deterministic_finite_automaton) required for the query. Default is `10000`.
+
+Elasticsearch uses [Apache Lucene](https://lucene.apache.org/core/) internally to parse regular expressions. Lucene converts each regular expression to a finite automaton containing a number of determinized states.
+
+You can use this parameter to prevent that conversion from unintentionally consuming too many resources. You may need to increase this limit to run complex regular expressions.
+
+##### minimum_should_match
+
+(Optional, string) Minimum number of clauses that must match for a document to be returned. See the [`minimum_should_match` parameter](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-minimum-should-match.html) for valid values and more information. See [How `minimum_should_match`works](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-query-string-query.html#query-string-min-should-match) for an example.
+
+##### quote_analyzer
+
+ [Analyzer](https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis.html) used to convert quoted text in the query string into tokens. Defaults to the [`search_quote_analyzer`](https://www.elastic.co/guide/en/elasticsearch/reference/current/analyzer.html#search-quote-analyzer) mapped for the `default_field`.
+
+For quoted text, this parameter overrides the analyzer specified in the `analyzer` parameter.
+
+##### phrase_slop
+
+(Optional, integer) Maximum number of positions allowed between matching tokens for phrases. Defaults to `0`. If `0`, exact phrase matches are required. Transposed terms have a slop of `2`.
+
+##### quote_field_suffix
+
+Suffix appended to quoted text in the query string.
+
+You can use this suffix to use a different analysis method for exact matches. See [Mixing exact search with stemming](https://www.elastic.co/guide/en/elasticsearch/reference/current/mixing-exact-search-with-stemming.html).
+
+##### rewrite
+
+(Optional, string) Method used to rewrite the query. For valid values and more information, see the [`rewrite`parameter](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-multi-term-rewrite.html).
+
+##### time_zone
+
+(Optional, string) [Coordinated Universal Time (UTC) offset](https://en.wikipedia.org/wiki/List_of_UTC_time_offsets) or [IANA time zone](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones) used to convert `date` values in the query string to UTC.
+
+Valid values are ISO 8601 UTC offsets, such as `+01:00`or -`08:00`, and IANA time zone IDs, such as `America/Los_Angeles`.
+
+> The `time_zone` parameter does **not** affect the [date math](https://www.elastic.co/guide/en/elasticsearch/reference/current/common-options.html#date-math) value of `now`. `now` is always the current system time in UTC. However, the `time_zone` parameter does convert dates calculated using `now` and [date math rounding](https://www.elastic.co/guide/en/elasticsearch/reference/current/common-options.html#date-math). For example, the `time_zone` parameter will convert a value of `now/d`.
+
+> https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-query-string-query.html
+
+
+
+### Simple query string query
+
+Returns documents based on a provided query string, using a parser with a limited but fault-tolerant syntax.
+
+This query uses a [simple syntax](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-simple-query-string-query.html#simple-query-string-syntax) to parse and split the provided query string into terms based on special operators. The query then [analyzes](https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis.html) each term independently before returning matching documents.
+
+While its syntax is more limited than the [`query_string`query](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-query-string-query.html), the `simple_query_string` query does not return errors for invalid syntax. Instead, it ignores any invalid parts of the query string.
+
+```json
+GET /_search
+{
+  "query": {
+    "simple_query_string" : {
+        "query": "\"fried eggs\" +(eggplant | potato) -frittata",
+        "fields": ["title^5", "body"],
+        "default_operator": "and"
+    }
+  }
+}
+```
+
+
+
+### minimum_should_match parameter
+
+The `minimum_should_match` parameter’s possible values:
+
+| Type                  | Example       | Description                                                  |
+| --------------------- | ------------- | ------------------------------------------------------------ |
+| Integer               | `3`           | Indicates a fixed value regardless of the number of optional clauses. |
+| Negative integer      | `-2`          | Indicates that the total number of optional clauses, minus this number should be mandatory. |
+| Percentage            | `75%`         | Indicates that this percent of the total number of optional clauses are necessary. The number computed from the percentage is rounded down and used as the minimum. |
+| Negative percentage   | `-25%`        | Indicates that this percent of the total number of optional clauses can be missing. The number computed from the percentage is rounded down, before being subtracted from the total to determine the minimum. |
+| Combination           | `3<90%`       | A positive integer, followed by the less-than symbol, followed by any of the previously mentioned specifiers is a conditional specification. It indicates that if the number of optional clauses is equal to (or less than) the integer, they are all required, but if it’s greater than the integer, the specification applies. In this example: if there are 1 to 3 clauses they are all required, but for 4 or more clauses only 90% are required. |
+| Multiple combinations | `2<-25% 9<-3` | Multiple conditional specifications can be separated by spaces, each one only being valid for numbers greater than the one before it. In this example: if there are 1 or 2 clauses both are required, if there are 3-9 clauses all but 25% are required, and if there are more than 9 clauses, all but three are required. |
+
+
+
+# Search across cluster
+
+**Cross-cluster search** lets you run a single search request against one or more [remote clusters](https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-remote-clusters.html). For example, you can use a cross-cluster search to filter and analyze log data stored on clusters in different data centers.
+
+跨集群搜索使您可以针对一个或多个远程集群运行单个搜索请求。 例如，您可以使用跨集群搜索来过滤和分析存储在不同数据中心的集群中的日志数据。
+
+## Supported APIs
+
+- [Search](https://www.elastic.co/guide/en/elasticsearch/reference/current/search-search.html)
+- [Multi search](https://www.elastic.co/guide/en/elasticsearch/reference/current/search-multi-search.html)
+- [Search template](https://www.elastic.co/guide/en/elasticsearch/reference/current/search-template.html)
+- [Multi search template](https://www.elastic.co/guide/en/elasticsearch/reference/current/multi-search-template.html)
+
+## Cross-cluster search examples
+
+### Remote cluster setup
+
+To perform a cross-cluster search, you must have at least one remote cluster configured.
+
+The following [cluster update settings](https://www.elastic.co/guide/en/elasticsearch/reference/current/cluster-update-settings.html) API request adds three remote clusters:`cluster_one`, `cluster_two`, and `cluster_three`.
+
+```json
+PUT _cluster/settings
+{
+  "persistent": {
+    "cluster": {
+      "remote": {
+        "cluster_one": {
+          "seeds": [
+            "127.0.0.1:9300"
+          ]
+        },
+        "cluster_two": {
+          "seeds": [
+            "127.0.0.1:9301"
+          ]
+        },
+        "cluster_three": {
+          "seeds": [
+            "127.0.0.1:9302"
+          ]
+        }
+      }
+    }
+  }
+}
+```
+
+### Search a single remote cluster
+
+The following [search](https://www.elastic.co/guide/en/elasticsearch/reference/current/search-search.html) API request searches the `twitter`index on a single remote cluster, `cluster_one`.
+
+```json
+GET /cluster_one:twitter/_search
+{
+  "query": {
+    "match": {
+      "user": "kimchy"
+    }
+  }
+}
+```
+
+The API returns the following response:
+
+```json
+{
+  "took": 150,
+  "timed_out": false,
+  "_shards": {
+    "total": 1,
+    "successful": 1,
+    "failed": 0,
+    "skipped": 0
+  },
+  "_clusters": {
+    "total": 1,
+    "successful": 1,
+    "skipped": 0
+  },
+  "hits": {
+    "total" : {
+        "value": 1,
+        "relation": "eq"
+    },
+    "max_score": 1,
+    "hits": [
+      {
+        "_index": "cluster_one:twitter", 
+        "_type": "_doc",
+        "_id": "0",
+        "_score": 1,
+        "_source": {
+          "user": "kimchy",
+          "date": "2009-11-15T14:12:12",
+          "message": "trying out Elasticsearch",
+          "likes": 0
+        }
+      }
+    ]
+  }
+}
+```
+
+### Search multiple remote clusters
+
+The following [search](https://www.elastic.co/guide/en/elasticsearch/reference/current/search.html) API request searches the `twitter`index on three clusters:
+
+- Your local cluster
+- Two remote clusters, `cluster_one` and `cluster_two`
+
+```json
+GET /twitter,cluster_one:twitter,cluster_two:twitter/_search
+{
+  "query": {
+    "match": {
+      "user": "kimchy"
+    }
+  }
+}
+```
+
+The API returns the following response:
+
+```json
+{
+  "took": 150,
+  "timed_out": false,
+  "num_reduce_phases": 4,
+  "_shards": {
+    "total": 3,
+    "successful": 3,
+    "failed": 0,
+    "skipped": 0
+  },
+  "_clusters": {
+    "total": 3,
+    "successful": 3,
+    "skipped": 0
+  },
+  "hits": {
+    "total" : {
+        "value": 3,
+        "relation": "eq"
+    },
+    "max_score": 1,
+    "hits": [
+      {
+        "_index": "twitter", 
+        "_type": "_doc",
+        "_id": "0",
+        "_score": 2,
+        "_source": {
+          "user": "kimchy",
+          "date": "2009-11-15T14:12:12",
+          "message": "trying out Elasticsearch",
+          "likes": 0
+        }
+      },
+      {
+        "_index": "cluster_one:twitter", 
+        "_type": "_doc",
+        "_id": "0",
+        "_score": 1,
+        "_source": {
+          "user": "kimchy",
+          "date": "2009-11-15T14:12:12",
+          "message": "trying out Elasticsearch",
+          "likes": 0
+        }
+      },
+      {
+        "_index": "cluster_two:twitter", 
+        "_type": "_doc",
+        "_id": "0",
+        "_score": 1,
+        "_source": {
+          "user": "kimchy",
+          "date": "2009-11-15T14:12:12",
+          "message": "trying out Elasticsearch",
+          "likes": 0
+        }
+      }
+    ]
+  }
+}
+```
+
+ This document’s `_index` parameter doesn’t include a cluster name. This means the document came from the local cluster.
+
+This document came from `cluster_one`.
+
+This document came from `cluster_two`.
+
+### Skip unavailable clusters
+
+By default, a cross-cluster search returns an error if **any**cluster in the request is unavailable.
+
+To skip an unavailable cluster during a cross-cluster search, set the [`skip_unavailable`](https://www.elastic.co/guide/en/elasticsearch/reference/current/cluster-remote-info.html#skip-unavailable) cluster setting to `true`.
+
+The following [cluster update settings](https://www.elastic.co/guide/en/elasticsearch/reference/current/cluster-update-settings.html) API request changes `cluster_two`'s `skip_unavailable` setting to `true`.
+
+```json
+PUT _cluster/settings
+{
+  "persistent": {
+    "cluster.remote.cluster_two.skip_unavailable": true
+  }
+}
+```
+
+If `cluster_two` is disconnected or unavailable during a cross-cluster search, Elasticsearch won’t include matching documents from that cluster in the final results.
+
+## How cross-cluster search works
+
+Remote cluster connections work by configuring a remote cluster and connecting only to a limited number of nodes in that remote cluster. Each remote cluster is referenced by a name and a list of seed nodes. When a remote cluster is registered, its cluster state is retrieved from one of the seed nodes and up to three *gateway nodes* are selected to be connected to as part of remote cluster requests.
