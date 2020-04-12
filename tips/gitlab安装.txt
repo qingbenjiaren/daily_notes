@@ -1,0 +1,22 @@
+﻿GITLAB安装步骤
+sudo yum install -y curl policycoreutils-python openssh-server openssh-clients
+sudo systemctl enable sshd
+sudo systemctl start sshd 
+sudo firewall-cmd –-permanent –-add-service=http
+sudo systemctl reload firewalld
+
+GitLab官方文档中有多种安装方式，分别为deb，rpm，node，python，gem。详情请看：https://packages.gitlab.com/gitlab/gitlab-ce/install
+
+curl -s https://packages.gitlab.com/install/repositories/gitlab/gitlab-ce/script.rpm.sh | sudo bash
+
+yum search gitlab
+
+yum install -y gitlab
+
+此时此刻，GitLab 终于装上了！ 然后按照提示 修改 /etc/gitlab/gitlab.rb 把 external_url 中的地址修改一下
+gitlab-ctl reconfigure
+W！
+
+
+
+W!-5wi603rkF

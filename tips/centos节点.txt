@@ -1,0 +1,23 @@
+﻿100：blank OS :用于克隆
+
+101 数据库，NGINX，（mysql,postgresql,mongo） redis集群7000-7010 2cpu 4G
+102 mysql从103
+103 rabbitmq mysql 主
+104 mysql从101
+105 zk从 
+106 zk主 mongo
+
+200 zk
+201 zk01
+202 zk02
+203 zk03
+204 zk04
+
+211 kafka
+212 kafka
+213 kafka
+
+131 Elastic Search
+
+141 RocketMQ
+150 Docker    
