@@ -88,7 +88,7 @@ Defines an alias to an existing field
 
 ## Multi-fields
 
-为不同的目的以不同的方式为同一字段建立索引通常很有用。 例如，可以将字符串字段映射为用于全文搜索的文本字段，并映射为用于排序或聚合的关键字字段。 另外，您可以使用标准分析仪，英语分析仪和法语分析仪为文本字段建立索引。
+为不同的目的以不同的方式为同一字段建立索引通常很有用。 例如，可以将字符串字段映射为用于全文搜索的**文本字段**，并映射为用于排序或聚合的**关键字字段**。 另外，您可以使用标准分析仪，英语分析仪和法语分析仪为文本字段建立索引。
 
 This is the purpose of *multi-fields*. Most datatypes support multi-fields via the [`fields`](https://www.elastic.co/guide/en/elasticsearch/reference/6.8/multi-fields.html) parameter.
 
