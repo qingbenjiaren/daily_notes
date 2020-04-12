@@ -13,6 +13,10 @@
 
 	yum clean all
 	yum makecache 
+
+
+安装开发者工具包
+yum groupinstall "Development Tools" -y
 	
 Centos修改hostname
 	1.修改hostname
@@ -88,3 +92,7 @@ unzip -d ./plugins/pingyin xxxxx.zip
 npm config set registry https://registry.npm.taobao.org
 
 设置好以后，重新执行 npm install即可
+
+docker镜像
+ /etc/docker/daemon.json
+"registry-mirrors":["https://f3lu6ju1.mirror.aliyuncs.com"]
