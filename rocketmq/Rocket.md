@@ -374,3 +374,290 @@ consumer4 : 2
 			4、个队列平均分配给2个消费者，第二个消费者监听的是另一个主题，因此分配给第二个消费者的
 			队列无法被消费
 
+
+
+# 深入RocketMQ
+
+## 面试问题
+
+如何保证消息不被重复消费？如何保证消费的时候是幂等？
+
+如何保证消息队列的高可用
+
+如何保证消息的可靠性传输？消息丢了怎么办？
+
+如何保证消息的顺序性？
+
+如何决消息队列的延时以及过期失效的问题？消息队列满了以后该怎么处理，有几百万消息持续积压几小时，怎么解决？
+
+
+
+![](Rocket.assets/Rocket架构.png)
+
+对于上图中几个角色的说明：
+
+1. NameServer：RocketMQ集群的命名服务器（也可以说是注册中心），它本身是无状态的（实际情况下可能存在每个NameServer实例上的数据有短暂的不一致现象，但是通过定时更新，在大部分情况下都是一致的），用于管理集群的元数据（ 例如，KV配置、Topic、Broker的注册信息）。(类似于kafka的zookeeper)
+2. Broker（Master）：RocketMQ消息代理服务器主节点，起到串联Producer的消息发送和Consumer的消息消费，和将消息的落盘存储的作用；
+3. Broker（Slave）：RocketMQ消息代理服务器备份节点，主要是通过同步/异步的方式将主节点的消息同步过来进行备份，为RocketMQ集群的高可用性提供保障；
+4. Producer（消息生产者）：在这里为普通消息的生产者，主要基于RocketMQ-Client模块将消息发送至RocketMQ的主节点。
+
+RocketMQ网络架构借鉴了kafka架构，在一些地方做了优化
+
+1. 注册中心
+2. 数据存储
+
+### NameServer
+
+NameServer是一个无状态服务，多个nameserver之间没有任何联系。都是独立存在
+
+其中一些nameserver宕机，不影响整个服务运行，全部nameserver宕机，也不会影响服务运行
+
+由于nameserver是无状态服务，所有broker需要同时向所有nameserver注册路由信息（队列和brokerIP映射关系）
+
+### Broker
+
+broker是用于存储消息的服务，是主从结构。
+
+broker和nameserver保持长连接，每隔30s向nameserver发送心跳包（topic中队列信息：路由）
+
+### Producer
+
+**问题：**producer发送消息的时候，是否知道应该把消息发送到哪个broker服务器中进行储存
+
+**答案：**producer不知道把消息发送到哪个broker服务器，首先从注册中心nameserver获取路由信息。路由信息包含：队列--ip地址
+
+producer获取路由信息后，会在本地进行缓存
+
+producer和nameserver保持长连接，每隔30s查询新的topic对象信息
+
+producer和broker保持长连接，每隔30s会向broker发送心跳检测。（是否处于running状态）
+
+### Consumer
+
+consumer和nameserver保持长连接，没隔30s将会从nameserver服务中查询topic路由信息，（会在本地进行缓存）根据IP映射文件从broker中消费消息
+
+consumer和broker保持长连接，每隔30s发送心跳检测。
+
+### Topic
+
+topic代表主题，代表一类消息，一个消费者组只能消费一类消息
+
+### 分区
+
+queue，并发消费
+
+### message
+
+发送消息：用Message封装消息对象
+
+### Tag
+
+是一个消息的标签，可以对消息进行二次过滤，相当于二次分类
+
+
+
+面试问题
+
+如何保证消息不被重复消费？
+
+**解决方案，把queue分配给不同的消费者，一旦分配，此队列不能被其他消费者所消费**
+
+
+
+![](Rocket.assets/RocketMQ集群.png)
+
+对于上面图中几条通信链路的关系：
+
+1. Producer与NamerServer：每一个Producer会与NameServer集群中的一个实例建立TCP连接，从这个NameServer实例上拉取Topic路由信息；
+2. Producer和Broker:Producer会和它要发送的topic相关联的Master的Broker代理服务器建立TCP连接，用于发送消息以及定时的心跳信息；
+3. Broker和NamerServer：Broker（Master or Slave）均会和每一个NameServer实例来建立TCP连接。Broker在启动的时候会注册自己配置的Topic信息到NameServer集群的每一台机器中。即每一个NameServer均有该broker的Topic路由配置信息。其中，Master与Master之间无连接，Master与Slave之间有连接；
+
+## 消息存储
+
+### 消息存储模型
+
+![](Rocket.assets/存储模型.png)
+
+RocketMQ文件存储模型层次结构如上图所示，根据类别和作用从概念模型上大致可以划分为5层
+
+**IndexFile：索引文件，可以通过key找到消息，对消息进行维护**
+
+**ConsumerQueue：队列**
+
+**CommitLog：log文件，真正用于存储消息的**
+
+kafka使用队列存储消息，RockerMQ队列只存地址，不存储消息。
+
+真正的消息是存储在CommitLog文件，此文件用于存储消息，队列只用来存储消息的地址。
+
+![](Rocket.assets/1587398024(1).png)
+
+kafka的顺序读写是针对partition的，当partition过多，就编程随机读写了。
+
+kafka：使用partition的概念，一个topic下有多个partition，一个partition就是一个文件一个文件写入磁盘时顺序存储的，但是两个文件之间不是顺序的，所以kafka的topic不能太多，多了就会急剧下降
+
+原因：多个分区导致磁盘数据的随机存储，导致查询数据非常慢
+
+Rocket也有分区的概念
+
+分区，queue如果也是非常庞大，比如说1000个队列，是否会影响性能呢？
+
+1、对于queue来说尺寸非常小，
+
+2、queue是常驻在内存里面
+
+### 数据刷盘
+
+同步刷盘：flushDiskType = SYNC_FLUSH，等消息写入到磁盘上后才返回确认
+
+异步刷盘：flushDiskType = ASYNC_FLUSH，为了性能考虑，大多数情况下采用异步刷盘
+
+此种情况下，如何保证消息百分之百不丢失？
+
+### 顺序消息
+
+**分区顺序：一个Partition内所有的消息按照先进先出的顺序进行发布和消费**
+**全局顺序：一个Topic内所有的消息按照先进先出的顺序进行发布和消费**
+
+顺序消息：发送消息具有顺序性----思考：在什么样的场景下，要求发送的消息具有严格顺序？？？
+
+场景：
+					1、创建订单
+					2、支付订单
+					3、支付完毕
+					4、商品出库
+
+以上的消息的顺序是否可以颠倒？以上的消息在业务上具有不可逆的顺序，无法颠倒，发送消息必须按照业务顺序进行
+
+思考：消息在高并发（多线程）情况下，被发送到一个topic下的多个队列中进行存储？
+
+全局顺序消息（让所有的队列，所有的消息都具有顺序）：很难实现
+
+
+
+局部消息顺序性（让某些独立具有顺序）采用单线程的方式发送消息
+
+
+
+![](Rocket.assets/1587398489(1).png)
+
+### 消息去重
+
+什么场景下会产生重复消息
+
+![](Rocket.assets/1587398867(1).png)
+
+如何解决重复性消息
+
+messageID 唯一标识，
+
+借助第三方库：redis mysql
+
+用msgId做key
+
+接受broker中消息
+
+从redis/mysql查询消息，做消息去重判断
+
+如果没有重复，业务继续执行
+
+否则如果有重复的，直接return
+
+在多线程情况下，若多个consumer同时做消息重复判断，都通过了，会导致重复消费这个时候需要加分布式锁，让多个consumer互斥访问
+
+### 消息堆积
+
+消息严重堆积怎么处理？
+
+先修复 consumer 的问题，确保其恢复消费速度，然后将现有 consumer 都停掉。
+
+新建一个 topic，partition 是原来的 10 倍，临时建立好原先 10 倍的 queue 数量。
+
+接着临时征用 10 倍的机器来部署 consumer，每一批 consumer 消费一个临时 queue 的数据。这种做法相当于是临时将 queue 资源和 consumer 资源扩大 10 倍，以正常的 10 倍速度来消费数据。
+
+等快速消费完积压数据之后，得恢复原先部署的架构，重新用原先的 consumer 机器来消费消息。
+
+
+
+### 延时消息
+
+什么是延时消息：发送消息后一段时间，这个消息不能被消费者消费，只有等到延时时间到了，此消息才能被消费者所消费
+
+延时消息应用场景：用户下单，完成订单支付，下单到支付需要一段时间，限定30min如果未完成支持，订单超时，关闭订单，恢复库存
+
+如果用定时任务去轮询支付状态，性能非常不好，因为会频繁去扫描数据库
+
+延迟配置说明：
+
+1、broker.conf配置文件配置
+
+```properties
+#broker.conf配置文件
+brokerClusterName = DefaultCluster
+brokerName = broker-a
+brokerId = 0
+deleteWhen = 04
+fileReservedTime = 48
+brokerRole = ASYNC_MASTER
+flushDiskType = ASYNC_FLUSH
+#可以设置消息延时级别
+messageDelayLevel = 1s 5s 10s 30s 1m 2m 3m 4m 5m 6m 7m 8m 9m 10m 20m 30m 1h 2h
+```
+
+配置说明：
+
+- 配置项配置了从1级开始，各级延时的时间，可以修改这个指定级别的延时时间；
+- 时间单位支持：s、m、h、d，分别表示秒、分、时、天；
+- 默认值就是上面声明的，可手工调整；
+- 默认值已够用，不建议修改这个值。
+
+2、设置消息延时级别
+
+```java
+//创建消息对象
+Message message = new Message("topic-A",
+"tagB", ("helloB" +
+i).getBytes(RemotingHelper.DEFAULT_CHARSET));
+//设置消息延时级别
+message.setDelayTimeLevel(6);
+```
+
+![](Rocket.assets/延时消息.png)
+
+### 消息可靠性
+
+如何保证消息百分之百不丢失？consumer消费异常后，怎么让消息重新投递？
+
+![](Rocket.assets/消息可靠性 (1).png)
+
+### 事务消息
+
+RocketMQ在其消息定义的基础上，对事务消息扩展了两个相关的概念：
+
+**Half(Prepare) Message——半消息(预处理消息)**
+
+半消息是一种特殊的消息类型，该状态的消息暂时不能被Consumer消费。当一条事务消息被成功投递到Broker上，但是Broker并没有接收到Producer发出的二次确认时，该事务消息就处于"**暂时不可被消费**"状态，该状态的事务消息被称为半消息。
+
+**Message Status Check——消息状态回查**
+
+由于网络抖动、Producer重启等原因，可能导致Producer向Broker发送的二次确认消息没有成功送达。如果Broker检测到某条事务消息长时间处于半消息状态，则会主动向Producer端发起回查操作，查询该事务消息在Producer端的事务状态(Commit 或 Rollback)。可以看出，Message Status Check主要用来解决分布式事务中的超时问题。
+
+![](Rocket.assets/1587400191(1).png)
+
+上面是官网提供的事务消息执行流程图，下面对具体流程进行分析：
+
+1. Step1：Producer向Broker端发送Half Message；
+2. Step2：Broker ACK，Half Message发送成功；
+3. Step3：Producer执行本地事务；
+4. Step4：本地事务完毕，根据事务的状态，Producer向Broker发送二次确认消息，确认该Half
+Message的Commit或者Rollback状态。Broker收到二次确认消息后，对于Commit状态，则直接
+发送到Consumer端执行消费逻辑，而对于Rollback则直接标记为失败，一段时间后清除，并不会
+发给Consumer。正常情况下，到此分布式事务已经完成，剩下要处理的就是超时问题，即一段时
+间后Broker仍没有收到Producer的二次确认消息；
+5. Step5：针对超时状态，Broker主动向Producer发起消息回查；
+
+6. Step6：Producer处理回查消息，返回对应的本地事务的执行结果；
+7. Step7：Broker针对回查消息的结果，执行Commit或Rollback操作，同Step4
+
+### 实际案例
+
