@@ -1,0 +1,198 @@
+承上启下的作用
+
+云架构(云原生) ---- 软件开发思想
+	云原生：就是为了让应用程序（项目、mysql、es、mq...）运行在云上的解决方案，叫做云原生（云架构）
+	特点（一种思想）：
+		1）容器化：应用程序运行在容器中
+		2）微服务：微小的服务，将单体架构根据业务进行拆分，服务进行链式调用模式--可持续交付，部署。
+		3）可持续交付，部署：CI/CD
+		4）DevOps
+	云原生架构理念：	
+		* iaas （infrastructure as a service）
+				#基础设施即服务
+					用户：购买服务器，建设机房，DNS，交换机，路由，网络。。。（硬件环境）
+					云计算提供商：提供网络、存储、dns、服务器等等这些服务，用户只需要租用云主机即可，不需要关心硬件建设。
+					网络、存储、dns、服务器 这样的服务就叫做基础设施即服务
+					思考：用户购买了一套iaas服务？相当于买了一台空的服务器即相关设施
+		
+		* paas（platform as a service）
+				#平台即服务
+					在iaas的基础上安装一些软件：基础服务软件----MySQL,RocketMQ,ElasticSearch...作为基础服务
+					思考：用户购买了这样的服务后，此时用户只需要关心项目业务代码的开发，基础软件服务不需要自己安装
+		
+		* caas（container as a service）
+				#容器即服务。软件、服务都运行在容器中。
+				
+		* saas（software as a service）
+				#软件即服务
+					OA(多租户)
+					钉钉（多租户）
+					财务（多租户）
+		* faas（function as a service）,baas（backend as a service）
+				# 视频服务提供商（直播）---- 函数收费（函数运行了，收费，不运行就不收费）
+				# CDN服务商（视频缓存服务）---- 函数收费
+				# 短信服务 --- 发一条短信收一条费用
+				# 支付服务 --- 函数收费
+				
+		* service mesh
+				# 客户端 -->proxy代理服务--->服务（集群）
+				# 客户端+proxy(集成在一起：服务治理--降级，限流，监控。。。)---->服务（集群）
+				注意：
+					#一般企业直接使用proxy代理模式就可以了，至于服务治理：spring cloud
+					#service mesh 不建议使用，落地非常困难，中小型企业完不起，技术能力，资金能力限制了玩不起这个
+		* serverless
+				# server 服务器，less 无 ---> 无服务器
+				# 表示未来开发境界：程序员只需要关心代码业务开发即可，服务器环境不需要关心，所有的服务都上云。
+				# 找个架构师架构一下，找几个程序员开发一下就OK了，没有服务器就没有运维了
+				# 未来：
+					公有云：阿里云，腾讯云，网易云、百度云、滴滴云...
+					私有云：k8s自己公司构建自己的私有云 ---- 很多公司在使用私有云
+	
+	应用架构部署模式的变迁：
+		* 物理机
+				操作系统
+		* 虚拟机
+				OpenStack
+		* 云原生
+				kubernetes
+		思考：微服务架构，服务拆分成千上万个服务，就需要非常多的容器来进行部署，那么这些容器怎么管理。
+			怎么横向扩容？
+			服务宕机了，怎么恢复，你是如何知道的？
+			版本更新，上线，更新容器后，线上业务如何不受影响？
+			监控容器？
+			调度问题？
+			安全问题？
+			
+		windows系统：海量的文件，如何管理？？
+			资源管理器（管理文件：调度）
+		
+	容器编排（管理）技术
+		解决问题：
+			怎么横向扩容？
+			服务宕机了，怎么恢复，你是如何知道的？
+			版本更新，上线，更新容器后，线上业务如何不受影响？
+			监控容器？
+			调度问题？
+			安全问题？
+			
+			以上的问题，对于容器编排技术来说，一个指令，一个按钮就可以搞定一切
+			
+		* docker-compose
+			非常轻量级容器编排技术，可以通过yaml文件方式，对容器进行批量管理，不能实现复杂容器编排
+		* rancher
+			可视化的容器管理工具，v2版本也提供了对k8s兼容。中小型使用，性能非常差，不能实现复杂得容器编排。
+		* swarm
+			docker公司自己研发的容器编排技术。docker自己都不用了，自己都用kubernetes，说明k8s性能非常强大
+		* mesos
+			apache软件基金会提供的开源的容器编排技术，
+		* borg
+			google公司研发的容器编排技术，这套技术没有对外公开，强大，稳定。
+		* kubernetes
+			google公司研发的容器编排技术，使用go语言开发。性能非常强大而且稳定、同时通过指令、yaml编程方式管理容器，非常灵活
+			
+	使用Kubernetes可以
+		自动化容器的部署和复制
+		随时扩展或收缩容器规模
+		将容器组织成组，并且提供容器间的负载均衡
+		很容易的升级应用程序容器的新版本
+
+	5、kubernetes -- k8s 基本认识
+		* borg（是google公司的秘密武器）（战略武器）
+			Borg. google的borg系统运行几十万个以上任务，来自几千个不同的应用，跨多个集群，每个集群（cell）有上万个机器
+			十几年前，已经在大量使用。所以说，是google的秘密武器
+			google要是没有borg系统的支持，发展不到这么庞大
+		
+		kubernetes 
+			k8s这个软件就是参考borg系统架构，使用go语言开发的。
+			主要：编排容器----> 镜像
+			ETCD:nosql数据库，作用：服务注册于发现
+			架构组件：
+				* master, slave(node节点)
+				* master(scheduler, controllers, api server, etcd)
+				* image
+				* dashboard ui可视化界面
+			
+		k8s主要功能
+			数据卷：Pod中容器之间共享数据，可以使用数据卷
+			应用程序健康检查：容器内服务可能进程堵塞无法处理请求，可以设置监控检查策略保证应用健壮性
+			复制应用程序实例：控制器维护者Pod副本数量，保证一个Pod或一组同类的Pod数量始终可用。
+			弹性伸缩：根据设定的指标（CPU利用率）自动缩放Pod副本
+			服务发现：使用环境变量或DNS服务插件保证容器中程序发现Pod入口访问地址
+			负载均衡
+			滚动更新
+			服务编排
+			资源监控：Node节点组件继承cAdvisor
+			提供认证和授权：
+			
+	k8s集群 -- 分布式架构（一个master节点--主节点，一群node节点--计算节点）
+		* master
+			* Api server 网关，所有的请求指令都必须经过ApiServer转发
+			* scheduler 调度器，把请求指令（crud）调度到合适的node节点上。
+				how：把调度请求发送给apiserver，apiserver将会把请求指令存储在etcd。
+					node节点上有kubelet用于监控etcd，当监控到本node节点的指令，就会获取指令，执行
+			* controllers 控制器（十几个控制器），每一个控制器对应相应的资源，控制器对这些资源进行管理（crud）。
+			* etcd nosql，存储一些指令，用来做服务的注册于发现
+			
+		* node节点
+			* pod 是k8s最小的管理单位。（k8s不直接管理容器，管理的是pod）
+				pod内部有一个或者多个容器，pod是一个用来封装容器的容器。
+				一个node节点可以有一群pod，理论上是无限制的，取决于硬件资源
+			* docker 容器引擎（程序），k8s管理容器，容器由docker进行创建，k8s底层必须有docker引擎。
+			* kubelet 监听etcd，获取指令管理pod，kubelet是真正管理pod的组件
+			* kube-proxy 代理服务，主要用来做负载均衡。设置iptables负载规则，更新service虚拟endpoints
+			* fluentd 日志收集组件
+			* dns 域名解析服务器
+	
+	k8s master
+		api server
+		
+		controllers--- 控制器
+			* replication-controller：副本控制器，控制副本数量与预期设定的数量保持一致
+			* node controller：检查node节点监控状况：有k8s本身内部实现的。
+			* namespace controller：创建pod，会把pod分配在不同的命名空间下，定期清理无效的namespace
+			* service controller：虚拟服务控制器，维护虚拟IP，提供负载均衡的。
+			* endpoints controller：提供了pod，service关联服务。
+			* service Account controller：安全认证
+			* persistent volume controller：持久化存储控制器-有状态服务的部署，数据持久化存储PVC
+			* daemon set controller：让每一个服务器都具有一个相同的服务
+			* deployment controller：部署控制器，支持滚动更新，发版
+			* Job controller：定时任务控制器
+			* pod autoscale：自动更新控制器，cpu利用率>= 80%，自动扩容。
+		
+		etcd
+			etcd是一个分布式的，可靠的key-value存储系统，它用于存储分布式系统中的关键数据
+			
+		scheduler 调度器
+			pod队列，node集合，调度算法策略，把pod分配到哪个node，然后存在etcd里面，然后node节点的kubelet监听etcd,表示要把pod发布到该node，然后拿去创建
+			podQueue（即将要创建的pod）
+			nodeList(存储pod的节点集合)
+			scheduler通过调度策略算法把 pod 和某一个 node 进行配对，存储在etcd，node节点的kubelet监控到数据，把pod获取到，在本地创建pod
+			调度算法：
+				* 预选调度
+						判断pod是否存在冲突
+						pod的名称是否重复
+				* 优选调度（最优节点）
+						cpu利用率最小的节点
+		kubelet 
+			kubelet是master节点在node节点的代理，kubelet负责接收etcd的数据，每个节点都会启动kubelet进程，用来处理master节点下发到本节点的任务
+			管理本机运行容器的生命周期，比如创建容器（CRUD），pod挂载数据卷，下载sefret，获取容器和节点状态等，kubelet将每个pod转换成一组容器
+			
+			kubelet实际上就相当于链式调用
+				
+		kube-proxy
+			在Node节点上实现pod网络代理，设置路由规则，相当于反向代理，但是不执行具体的代理任务，而是设置iptables路由规则，真正的代理是iptables
+			
+		
+				
+			
+			
+			
+		
+			
+		
+		
+		
+		
+		
+
+k8s

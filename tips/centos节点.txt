@@ -7,6 +7,15 @@
 105 zk从 
 106 zk主 mongo
 
+110 mongo
+
+131 Elastic Search
+
+141 RocketMQ
+150 Docker
+
+160 Nginx0    
+
 200 zk
 201 zk01
 202 zk02
@@ -16,8 +25,3 @@
 211 kafka
 212 kafka
 213 kafka
-
-131 Elastic Search
-
-141 RocketMQ
-150 Docker    

@@ -1,0 +1,174 @@
+RocketMQ网络架构
+	NameServer(类似于kafka的zookeeper)
+	Producer
+	Consumer
+	Broker
+	
+	RocketMQ网络架构借鉴了kafka架构，在一些地方做了优化
+	
+	NameServer是一个无状态服务，多个nameserver之间没有任何联系。都是独立存在
+		
+		其中一些nameserver宕机，不影响整个服务运行
+		全部nameserver宕机，也不会影响服务运行
+		
+		由于nameserver是无状态服务，所有broker需要同时向所有nameserver注册路由信息（队列和brokerIP映射关系）
+		
+		broker是用于存储消息的服务，是主从结构。
+		broker和nameserver保持长连接，每隔30s向nameserver发送心跳包（topic中队列信息：路由）
+		
+		问题：producer发送消息的时候，是否知道应该把消息发送到哪个broker服务器中进行储存
+			producer不知道把消息发送到哪个broker服务器，首先从注册中心nameserver获取路由信息。路由信息包含：队列--ip地址
+		
+		producer获取路由信息后，会在本地进行缓存
+		producer和nameserver保持长连接，每隔30s查询新的topic对象信息
+		
+		producer和broker保持长连接，每隔30s会向broker发送心跳检测。（是否处于running状态）
+		
+		consumer和nameserver保持长连接，没隔30s将会从nameserver服务中查询topic路由信息，（会在本地进行缓存）
+		根据IP映射文件从broker中消费消息
+		
+		consumer和broker保持长连接，每隔30s发送心跳检测。
+		
+		何为nameserver
+		何为broker
+		何为producer
+		何为consumer
+		
+		何为topic
+			topic代表主题，代表一类消息
+			
+		何为分区（queue）
+		
+		Message
+			发送消息：用Message封装消息对象
+			
+		Tag
+			是一个消息的标签，可以对消息进行二次过滤，相当于二次分类
+			
+			
+			
+		面试问题
+			如何保证消息不被重复消费？如何保证消费
+			
+			
+			
+		消息存储：
+			IndexFile：索引文件，可以通过key找到消息，对消息进行维护
+			ConsumerQueue：队列
+			CommitLog：log文件，真正用于存储消息的
+			
+			回顾：使用队列存储消息（X）--kafka使用队列存储消息，RockerMQ队列只存地址，不存储消息
+			
+			真正的消息是存储在CommitLog文件，此文件用于存储消息，队列只用来存储消息的地址。
+			
+			
+			顺序存储和随机存储（rocketmq和KAFKA进行对比）
+			
+			采用文件方式进行数据存储，使用文件进行刷盘，在磁盘上就是顺序存储
+			读写效率就大大提高了。
+			
+			
+			
+			kafka：使用partition的概念，
+			一个topic下有多个partition
+				一个partition就是一个文件
+				一个文件写入磁盘时顺序存储的，但是两个文件之间不是顺序的，所以kafka的topic不能太多，多了就会急剧下降
+				原因：多个分区导致磁盘数据的随机存储，导致查询数据非常慢
+				
+			Rocket也有分区的概念
+				分区，queue如果也是非常庞大，比如说1000个队列，是否会影响性能呢？
+				1、对于queue来说尺寸非常小，
+				2、queue是常驻在内存里面
+				
+
+			数据刷盘
+				同步刷盘：flushDiskType = SYNC_FLUSH
+						等消息写入到磁盘上后才返回确认
+				异步刷盘：flushDiskType = ASYNC_FLUSH
+						为了性能考虑，大多数情况下采用异步刷盘
+						
+						此种情况下，如何保证消息百分之百不丢失
+						
+			顺序消息：发送消息具有顺序性----思考：在什么样的场景下，要求发送的消息具有严格顺序？？？
+			
+				场景：
+					1、创建订单
+					2、支付订单
+					3、支付完毕
+					4、商品出库
+					
+					以上的消息的顺序是否可以颠倒？以上的消息在业务上具有不可逆的顺序，无法颠倒，发送消息必须按照业务顺序进行
+					思考：消息在高并发（多线程）情况下，被发送到一个topic下的多个队列中进行存储？
+					
+						全局顺序消息（让所有的队列，所有的消息都具有顺序）
+							很难实现
+						
+						局部消息顺序性（让某些独立具有顺序）
+							采用单线程的方式发送消息
+							
+							
+			消息去重：
+				什么场景下回产生重复消息
+				
+				producer                rocketmq            consumer
+				
+				1、网络抖动
+				2、RocketMQ服务器异常，导致ACK回馈超时，回馈失败
+				
+				
+				如何解决重复性消息
+					messageID 唯一标识
+					
+					借助第三方库：redis mysql
+					消息去重库
+					用msgId做key
+						接受broker中消息
+						从redis/mysql查询消息，做消息去重判断
+						如果没有重复，业务继续执行
+						否则如果有重复的，直接return
+						
+						在多线程情况下，若多个consumer同时做消息重复判断，都通过了，会导致重复消费
+						这个时候需要加分布式锁，让多个consumer互斥访问
+						
+						分布式锁
+						
+						
+						
+				消息严重堆积怎么处理？
+				
+					先修复consumer的问题，确保其恢复消费速度，然后将现有consumer都停掉
+					新建一个topic，partition是原来的10倍
+					
+				延时消息
+					
+					什么是延时消息
+						发送消息后一段时间，这个消息补鞥呢被消费者消费，只有等到延时时间到了，此消息才能被消费者所消费
+						
+						延时消息应用场景：用户下单，完成订单支付，下单到支付需要一段时间，限定30min如果未完成支持，订单超时，关闭订单，恢复库存
+						
+						如果用定时任务去轮询支付状态，性能非常不好，因为会频繁去扫描数据库
+						
+						延迟配置说明：
+							配置加指定，看文旦
+						
+				
+				消息可靠性
+					如何保证消息百分之百不丢失？consumer消费异常后，怎么让消息重新投递
+					
+				事务消息
+					RocketMQ在其消费
+					
+					
+					实际案例
+						
+						分布式事务：处理数据一致性
+							二次确认
+							
+							
+							
+							下节课k8s
+							
+					
+						
+				
+				
