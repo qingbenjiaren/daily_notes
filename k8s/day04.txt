@@ -1,0 +1,90 @@
+K8S容器编排技术------->通过管理pod来实现管理容器。最小单元是pod
+	
+	思考：
+		POD结构：
+			1、pod相当于一台独立机器，pod有自己的ip地址，也有自己的hostname，利用cgroups+namespace隔离（虚拟化技术），pod是一个虚拟化的分组
+			2、pod内部有一个、或多个（相关）容器，共同组成了一个pod
+		POD网络：
+			POD是一个独立的沙箱环境，POD内部是容器，容器内部是部署的服务。现在访问服务（外网），如何去访问？？？
+			前提思考：
+				1、pod，容器都有自己的ip地址，端口，但是pod，容器都是一个虚拟的，没有实体（物理机，物理网卡）与之对应，无法对外直接提供服务。
+				2、pod 如果想对外提供服务，必须绑定物理端口（在物理机器上开启一个端口，让这个端口和pod，容器端口进行映射）这样就可以使用物理端口进行数据包转发
+		
+		问题：
+			pod是一个进程，是有生命周期（宕机，版本更新，迭代），都会创建一个新的pod，pod的ip，hostname都发生了变化，因此如何去实现负载均衡？
+			
+			问题：当数据包从物理端口转发进入机器内部后，在多个pod之间如何实现负载均衡的访问？
+				pod之间是不能用nginx做负载均衡的，
+				1、因为pod宕机后会创建新的pod，IP，hostname都发生了变化
+				2、版本迭代也会创建新的pod
+				nginx无法发现新的pod，所以用nginx做负载均衡不可取（除非pod永远不变）
+			
+			k8s如何实现一组pod之间的负载均衡的
+				1、POD IP ------- POD的IP地址
+				2、NODE IP ------- 物理机的IP地址
+				3、Cluster IP ------- 虚拟IP，由K8S抽象出的service对象，此对象具有的ip地址,VIP
+				
+				看图，processon
+				注意：
+				service和POD之间的通信属于局域网通信，数据包通过service负载策略(iptables,ipvs)，直接转发给pod即可。
+				service无法对外网提供服务，service是一个虚拟的网络，没有对应的物理机，无法对外提供服务。
+
+				问题：pod宕机，发布版本，新建了pod，service是如何发现pod变化后的ip地址呢？？？
+				
+				标签选择器-------> 选择一组相关的服务，组建service对象，使得service的vip和pod 的ip构建一种关系映射
+				
+				问题：项目部署后要创建几个service？根据业务需求而定，创建多个service，一组相关的服务就是一个service
+				总结：只要是一组集群服务（副本服务）就必须创建一个与之对应的service，来实现副本集群pod之间的负载均衡
+				
+			service是如何产生的
+				
+			知识点强化
+				service vip是如何产生的
+				
+				结论：service vip是一种资源对象，部署服务的时候，可以通过k8s指令，yaml编程的方式进行创建（可视化界面，一键式创建）
+				
+				
+				明确部署项目要做的事情
+				1、创建deployment
+				2、创建svc（service）
+				
+				k8s在pod副本集群之间实现负载均衡----使用什么样的负载均衡呢？
+				1、userspace
+				2、iptables
+				3、ipvs
+				
+				第一种策略：
+					userspace：
+					看图
+					思考：	
+						kube-proxy实现很多功能
+							1、监听pod
+							2、更新service endpoints
+							3、负载均衡
+						导致kube-proxy性能严重下降，因此在新版本的k8s中，不在使用userspace模式
+						实现负载均衡。都是iptables，ipvs实现负载均衡
+						第一种方式只需要了解一下
+						
+				第二种策略
+					iptables
+					
+					注意：绑定物理端口的目的是对外网提供服务。如果服务是内部服务，则直接转发给service VIP即可
+					
+					真正实现负载均衡策略：
+						使用linux内核中iptables实现的
+						
+						
+				
+				第三种策略：	IPVS			
+		
+		iptables：防火墙
+			实际上，防火墙可以做数据包转发的作用，iptables开启端口，实际上就是做数据包转发
+			学习一下iptables
+		ipvs：4层负载均衡
+			IP虚拟服务器
+				实现传输层的负载均衡
+				
+				IPVS的功能更强大
+					负载策略更多
+					
+					IPVS和lvs
