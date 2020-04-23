@@ -373,5 +373,5 @@ ELK：提供 K8S 集群日志统一分析介入平台
 
 RC控制器：replication controller	让pod副本数量，与预期的数量始终保持一致（服务要部署集群，实际上就是把pod多部署几个副本，pod数量的控制由副本控制器控制）部署于其副本数量：replicas = 3(3个副本---3个pod)
 
-
+![](D:\kkb\github\daily_notes\k8s\k8s.assets\replication-controller.png)
 
