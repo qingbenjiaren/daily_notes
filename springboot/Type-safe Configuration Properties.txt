@@ -1,0 +1,79 @@
+Using the @Value("${property}") annotation to inject configuration properties can sometimes be cumbersome, 
+especially if you are working with multiple properties or your data is hierarchical in nature. 
+Spring Boot provides an alternative method of working with properties that lets strongly typed beans govern and validate the configuration of your application. 
+
+JavaBean properties binding
+	It is possible to bind a bean declaring standard JavaBean properties as shown in the following example:
+	
+	package com.example;
+	import java.net.InetAddress; import java.util.ArrayList; import java.util.Collections; import java.util.List;
+	import org.springframework.boot.context.properties.ConfigurationProperties;
+	@ConfigurationProperties("acme") public class AcmeProperties {
+	    private boolean enabled;
+	    private InetAddress remoteAddress;
+	    private final Security security = new Security();
+	    public boolean isEnabled() { ... }
+	    public void setEnabled(boolean enabled) { ... }
+	    public InetAddress getRemoteAddress() { ... }
+	    public void setRemoteAddress(InetAddress remoteAddress) { ... }
+	    public Security getSecurity() { ... }
+	    public static class Security {
+	        private String username;
+	        private String password;
+	        private List<String> roles = new ArrayList<>(Collections.singleton("USER"));
+	        public String getUsername() { ... }
+	        public void setUsername(String username) { ... }
+	        public String getPassword() { ... }
+	        public void setPassword(String password) { ... }
+	        public List<String> getRoles() { ... }
+	        public void setRoles(List<String> roles) { ... }
+	    } }
+The preceding POJO defines the following properties:
+• acme.enabled, with a value of false by default.
+• acme.remote-address, with a type that can be coerced from String. 
+• acme.security.username, with a nested "security" object whose name is determined by the name of the property. In particular, the return type is not used at all there and could have been SecurityProperties. 
+• acme.security.password. 
+• acme.security.roles, with a collection of String that defaults to USER.
+
+The properties that map to @ConfigurationProperties classes available in Spring Boot, which are configured via properties files, YAML files,
+ environment variables etc., are public API but the accessors (getters/setters) of the class itself are not meant to be used directly.
+ 
+ Constructor binding
+ The example in the previous section can be rewritten in an immutable fashion as shown in the following example:
+		package com.example;
+		import java.net.InetAddress; import java.util.List;
+		
+		import org.springframework.boot.context.properties.ConfigurationProperties; import org.springframework.boot.context.properties.ConstructorBinding; import org.springframework.boot.context.properties.bind.DefaultValue;
+		@ConstructorBinding
+		@ConfigurationProperties("acme")
+		public class AcmeProperties {
+		    private final boolean enabled;
+		    private final InetAddress remoteAddress;
+		    private final Security security;
+		    public AcmeProperties(boolean enabled, InetAddress remoteAddress, Security security) {         this.enabled = enabled;         this.remoteAddress = remoteAddress;         this.security = security;     }
+		    public boolean isEnabled() { ... }
+		    public InetAddress getRemoteAddress() { ... }
+		    public Security getSecurity() { ... }
+		    public static class Security {
+		        private final String username;
+		        private final String password;
+		        private final List<String> roles;
+		        public Security(String username, String password,                 @DefaultValue("USER") List<String> roles) {             this.username = username;             this.password = password;             this.roles = roles;         }
+		        public String getUsername() { ... }
+		        public String getPassword() { ... }
+		        public List<String> getRoles() { ... }
+		    }
+		}
+
+In this setup, the @ConstructorBinding annotation is used to indicate that constructor binding should be used. 
+This means that the binder will expect to find a constructor with the parameters that you wish to have bound.
+Nested members of a @ConstructorBinding class (such as Security in the example above) will also be bound via their constructor.
+Default values can be specified using @DefaultValue and the same conversion service will be applied to coerce the String value to the target type of a missing property.
+
+
+To use constructor binding the class must be enabled using @EnableConfigurationProperties or configuration property scanning. 
+You cannot use constructor binding with beans that are created by the regular Spring mechanisms 
+(e.g. @Component beans, beans created via @Bean methods or beans loaded using @Import)
+If you have more than one constructor for your class you can also use @ConstructorBinding directly on the constructor that should be bound.
+
+Enabling @ConfigurationProperties-annotated types

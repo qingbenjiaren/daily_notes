@@ -1,0 +1,54 @@
+application.yml
+spring:
+  profiles:
+    active:
+      - prod
+---
+spring:
+  profiles: dev
+
+server:
+  port: 8888
+  servlet:
+    context-path: /ddd
+---
+spring:
+  profiles: prod
+
+server:
+  port: 9999
+  servlet:
+    context-path: /ppp
+
+
+@Service
+@Profile("dev")
+public class DevelopServiceImpl implements SomeService {
+
+    @Override
+    public String send() {
+        return "开发阶段使用的业务接口实现类";
+    }
+}
+
+@Service
+@Profile("prod")
+public class ProduceServiceImpl implements SomeService {
+    @Override
+    public String send() {
+        return "生产环境下使用的业务接口实现类";
+    }
+}
+
+@RestController
+@RequestMapping("/test")
+public class SomeController {
+    @Autowired
+    private SomeService service;
+
+    @RequestMapping("/some")
+    public String someHandle() {
+        return service.send();
+    }
+}
+

@@ -1,0 +1,14 @@
+If you need to access the application arguments that were passed to SpringApplication.run(…), you
+can inject a org.springframework.boot.ApplicationArguments bean. 
+The ApplicationArguments interface provides access to both the raw String[] arguments 
+as well as parsed option and nonoption arguments, as shown in the following example:
+
+import org.springframework.boot.*; import org.springframework.beans.factory.annotation.*; import org.springframework.stereotype.*;
+@Component public class MyBean {
+    @Autowired     
+	public MyBean(ApplicationArguments args) {         
+		boolean debug = args.containsOption("debug");
+		        List<String> files = args.getNonOptionArgs();
+		        // if run with "--debug logfile.txt" debug=true, files=["logfile.txt"]     }
+}
+

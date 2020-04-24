@@ -1,0 +1,7 @@
+If a bean has one constructor, you can omit the @Autowired, as shown in the following example:
+@Service public class DatabaseAccountService implements AccountService {
+    private final RiskAssessor riskAssessor;
+    public DatabaseAccountService(RiskAssessor riskAssessor) {         this.riskAssessor = riskAssessor;     }
+    // ...
+}
+Notice how using constructor injection lets the riskAssessor field be marked as final, indicating that it cannot be subsequently changed.
