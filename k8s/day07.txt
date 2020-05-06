@@ -1,0 +1,16 @@
+问题：
+
+	service根据不同的业务pod创建不同的service。且service分为前端service，后端service
+	
+	一个pod内部使用localhost访问
+	
+	
+	
+	kube-proxy访问etcd
+	
+	
+	service是否存在单点故障
+		service资源对象存储在etcd，高可用交给etcd
+	
+	service是否会存在单点性能问题
+		

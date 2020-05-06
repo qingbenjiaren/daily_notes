@@ -1,0 +1,86 @@
+完成BeanDefinition的注册
+	完成资源定位（XML）
+	加载资源
+	解析并完成BeanDefinition的注册(BeanDefinitionRegistry)
+	
+		BeanDefinition ----bean标签
+			propertyValue -----property标签
+				value		TypedStringValue
+				ref			RuntimeBeanReference
+
+
+获取bean的流程
+	先读bean的缓存(Map)(SingletonBeanRegistry)
+	如果找到，直接返回
+	如果没有，先去根据beanName获取Beandefinition
+	根据Beandefinition完成Bean创建的三部曲（实例化，属性填充，初始化）
+	将创建好的bean放入缓存
+	
+
+如何创建bean
+	要的时候再创建  ------------BeanFactory
+	应用启动的时候，创建所有的懒加载方式的单例bean ---------------ApplicationContext
+	
+	AbstractBeanFactory
+		getBean(){
+			//从缓存中获取要找的对象
+			//找不到，则获取指定名称的BeanDefinition对象
+			//根据BeanDefinition完成bean的创建
+		}
+	专门用来负责单例bean的实例管理的接口
+	SingletonBeanRegistry
+		
+		Object getSingleton(String name);
+		//注册bean
+		addSingleton(String name, Object bean)
+	
+	/**
+	* 
+	*/
+	为什么要把集合对象封装在类里面？
+	将集合放到类里面，由专人对其维护，我们只是调用透明的API方法
+	DefaultSingletonBeanRegistry implements SingletonBeanRegistry
+		//管理BeanDefinition
+		
+		private Map<String, Object> singletons = new HashMap<>()
+		
+	AbstractBeanFactory extends DefaultSingletonBeanRegistry
+	一旦继承了DefaultSingletonBeanRegistry，就能get和add
+	者体现了类的单一职责原则
+	
+	AbstractBeanFactory extends DefaultSingletonBeanRegistry
+		
+		getBean(String name){
+			//从缓存中获取要找的对象
+			Object obj = getSingleton(name)
+			//找不到，则获取指定名称的BeanDefinition对象
+			抽象模板方法，我只定流程，不懂如何实现
+			BeanDefinition bd = getBeanDefinition(name);
+			
+			//根据BeanDefinition中的信息，判断是单例还是多例缓存）
+			//根据BeanDefinition完成bean的创建
+			Object object = createBean(bd);
+			
+			//缓存
+			addSingleton(name, object);
+		}
+		//如何获取beanDefinition交给子类完成
+		public abstract getBeanDefinition(String name);
+		
+		public abstract createBean(BeanDefinition bd);
+		
+	！！！注意，抽象类不能实例化	
+	
+	DefaultListableBeanDefinition
+	
+	
+	对于状态的判断，属性谁管理，谁判断
+	
+	比如：BeanDefinition里面有个isSingoton
+	要使用的时候不用根据字符串去判断是不是单例
+	
+	方法注意对内和对外，对内实现可能一样，对外可提供多种功能
+	
+		
+	
+	

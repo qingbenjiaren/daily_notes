@@ -1,0 +1,34 @@
+K8S分布式架构，一个master对应一群node
+
+搭建集群，1个master两个slave
+配置DNS
+谷歌DNS1=8.8.8.8
+配置成自己的DNS服务器
+配置成自己的DNS202.106.0.20
+systemctl restart network
+Linux内核必须是4以上
+uname -r
+
+
+构建基础依赖
+	设置hostname
+	vi /etc/hosts
+	设置hostname和ip地址的关系
+		IP hostname
+	
+	安装依赖：
+		yum install -y .......
+		
+		yum install -y conntrack ntpdate ntp ipvsadm ipset jq iptables curl sysstat libseccomp wget net-tools git iproute lrzsz bash-completion tree bridge-utils unzip bind-utils gcc
+		
+		  systemctl stop firewalld && systemctl disable firewalld
+		  yum -y install iptables-services && systemctl start iptables && systemctl enable iptables && iptables -F && service iptables save
+		
+	kubeadm批量部署
+		
+		
+K8S
+CI/CD
+SHELL
+	
+	

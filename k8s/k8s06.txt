@@ -1,0 +1,109 @@
+k8s相关指令 ----- 容器编排（操作的最小单元是POD）
+
+查看k8s帮助文档 ---- 查询所有的指令
+				kubectl --help
+查询节点信息
+	kubectl get node  == kubectl get nodes
+	kubectl get node -o wide
+查询POD（k8s最小的操作单元）
+	kubectl get pod
+	kubecrl get pod -o wide -n kube-system   --------------(kube-system,系统命名空间)
+	注意：kube-system 系统命名空间，此空间内运行的是k8s系统所需的pod(scheduler，etcd，apiserver..)
+	
+	一个部署POD的基本结构
+	
+	1、deployment
+	2、replicaset
+	3、pod
+	
+现在可以查询 Replicaset 副本控制器
+	kubectl get rs
+	kubectl get rs -o wide
+查询Deployment -- 查询部署对象
+    kubectl get deployment
+	kubectl get deployment -o wide
+查询service
+	kubectl get svc
+	kubectl get svc -o wide
+	
+	
+需求1：创建有一个pod，并且在这个pod中部署一个Nginx容器？？？
+
+使用k8s通过nginx镜像创建一个pod：
+	kubectl run my-nginx --image=nginx --port=80
+	
+	--查看kubectl describe pod 容器
+	
+	这样一条指令需要去创建几个资源对象
+	
+	创建了3个资源对象
+		Deployment  Replicaset  POD
+		
+		
+	kubectl run my-nginx --image=nginx --port=80
+	
+	这个指令要创建pod是先创建deployment，my-nginx是deployment的名字
+	第二个步骤是创建rs，my-nginx-XXXXXX是rs的名字
+	然后第三个不走是创建pod，my-nginx-XXXXXXX-XXXXXX是pod的名字
+	
+	
+	总结：创建pod实际上要创建3个资源对象
+	1、创建deployment部署资源对象，----->deployment支持滚动更新
+	2、创建ReplicaSet副本控制器，控制pod的数量，与预期设置的数量要保持一致
+	3、创建pod，pod内部部署的是容器，容器中部署的是服务。
+	
+	--image=nginx:v1 pod内部运行容器依赖地址，此镜像地址如果本地没有需要去远程镜像仓库下载
+	这里如果不写:v1而是直接写nginx，默认下载最新的版本的nginx，也就是nginx:latest，latest永远默认从网络下载
+	--port=80，设置端口
+	
+	scheduler进行调度，调度到哪个节点，哪个节点就拉镜像创建？？？？？？
+
+
+需求2：目前只有一个pod，现在对现有pod进行扩容
+	kubectl scale deployment/my-nginx --replicas=3 ---设置副本数量为3
+	另一种写法：kubectl scale deployment my-nginx --replicas=3 
+	
+	可以看到，现在有3个节点
+	如果删除一个 cubectl delete ID
+	马上去cukectl get node
+	依然还有三个，对比ID可以看出重新创建了一个
+	
+	即使全部删除
+		cubectl delete pod --all
+	
+	结果还有三个，重新创建了三个，因为我们设置了副本数量为3，说明一旦机器异常退出，集群会为我们重新创建
+	
+	
+	也可以设置为自动扩容
+	kubectl autoscale deployment my-nginx --min=10 --max=15 --cpu-percent=80
+	
+	
+	
+	
+需求三：需要对外网提供服务，外网如何访问
+	创建service
+		kubectl expose deployment my-nginx --port=8000 --target-port=80
+		通过上面的指令创建了一个service
+	然后：curl ClusterIP:8000
+	成功，已经实现了负载均衡
+	但是现在外网依然还不能访问
+	外网需要通过物理机的IP地址加端口来转发给service
+	现在我们需要绑定物理端口
+	kubectl edit svc my-nginx -- 编辑service服务的yaml文件
+	
+	总结：编排容器由两种操作方式：
+		1、指令
+		2、yaml
+		3、可视化图形界面，按钮---操作的颗粒度比较粗
+	
+	--题外话
+		kube-proxy作用：
+			监听pod
+			更新endpoints
+			设置路由规则
+			
+			
+	CI/CD兄弟
+	搞清楚
+		
+
