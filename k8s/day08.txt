@@ -1,0 +1,81 @@
+资源控制器
+
+什么是资源控制器
+	Kubernetes中内建了很多controller（控制器），这些相当于一个状态机，用来控制pod的具体状态和行为
+	pod分类
+		自主式pod，pod退出了，此类型的pod不会被创建
+		控制器管理的pod，在控制器的生命周期里，始终要维持pod的副本数目
+		
+	常用的控制器
+		ReplicationController
+		ReplicaSet
+		Deployment
+		DaemonSet
+		StateFulSet
+		Job/Cronjob
+		
+	自主式pod
+	
+		单独定义一个pod，这个没有副本控制器管理
+		
+		
+		所有的K8S管理的资源，都叫做资源对象，所有的资源对象都可以独立存在，但是需要根据相应原理，需求结合使用
+		
+		RS控制的pod是通过标签来控制的
+		
+		
+		
+		混动更新
+			只需要更新镜像，那么瞬间项目上线
+		
+		回滚到历史版本
+			kubectl rollout undo deployment nginx-deployment
+			
+		建议一个pod中部署一个容器
+		
+		有一些在业务上紧密耦合的服务，可以部署在一个容器（相关的服务）
+		
+	Pod Phase
+		描述pod生命周期的阶段
+		pengding pod已经被kubernetes接受，但尚未创建一个或多个容器镜像
+		running
+		secceeded
+		failed
+		unknown
+		
+		kubectl describe pods test -n kube-system
+		
+	重启策略
+		pod的重启策略有3种，默认值为Always
+		Always
+		Onfailure
+		Never
+		
+		
+		
+		
+	
+	POD内的容器出问题了，但是POD是正常运行的，这个时候怎么去发现呢？
+		liveness probe 检查容器是否存活
+		readiness probe 检查容器是否就绪
+		
+	
+	容器探针
+		探针是由kubelet对容器执行的定期诊断，要执行诊断，kubelet调用由容器实现的Handler。有三种类型的处理程序
+			ExecAction
+			TCPSocketAction
+			HTTPGetAction
+			
+		每次探针都将获得以下三种结果之一
+			
+			成功
+			失败
+			未知
+		探测方式
+			livenessProbe：是否运行（是否存活），若存活探测失败，杀死容器，并且受到重启策略
+			readinessProbe：是否就绪（是否准备好服务请求）
+			
+			
+		例子
+			全是yaml编程：
+			
