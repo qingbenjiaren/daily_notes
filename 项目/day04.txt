@@ -1,0 +1,75 @@
+缓存
+	前提：程序内存数据(读写速度) > Redis缓存 > mysql缓存
+	
+	
+	线程池
+	
+		线程池大小的设计
+		公式
+	
+	异步编程
+		Futrue
+	
+	服务扩容
+		
+	消息队列的应用----RocketMQ（十万-单机）---提高吞吐量
+	
+	
+	Jenkins持续集成&部署
+	可持续集成、可持续部署---CI/CD架构模式项目----构建流程
+	
+	
+主要内容
+	docker容器化部署方式
+		docker file 构建镜像
+	Jenkins
+	docker容器化部署方式
+	k8s部署方式
+	
+如何构建满足CI/CD这样模式构建的项目架构，SOA架构，微服务架构，模块化的拆分比较多，需要让服务耦合性降低，满足CI/CD需求
+
+
+	docker file
+		对于开发人员：
+		对于测试人员：
+		对于运维人员：
+		
+		常用命令：
+			
+		From centos:latest                                				依赖的基础镜像
+		MAINTAINER hulk													维护者
+		WORKDIR /usr/local/java											工作目录
+		ADD jdk-....... /usr/local/java									添加并解压
+		ENV JAVA_HOME /usr/local/java/jdk1.8.0_65						配置环境变量
+		ENV PATH $JAVA_HOME/bin:$PATH									配置环境变量
+		
+		
+		
+		docker build -t jdk1.8:v2.
+		
+		
+		FROM jdk1.8.2
+		VOLUME /tmp
+		ADD app.jar /usr/local/
+		ENTRYPOINT ["java","-jar","/usr/local/app.jar"]      //容器一旦执行，参数就会执行
+		
+		
+		java语言做镜像，在每个项目的目录下都建立一个dockerfile文件
+		
+		使用pom插件也可以构建镜像，maven底层也是使用dockerfile
+		
+镜像制作搞清楚之后，可以去做jenkins了
+		
+		Continuous Integration 				持续集成
+		Continuous Delivery					持续交付
+		Continuous Deployment				持续部署
+		
+jenkins是什么
+	jenkins官网文档很详细
+		
+镜像推送
+	
+			
+	
+	
+	
