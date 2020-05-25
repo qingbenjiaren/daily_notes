@@ -1,0 +1,172 @@
+ELK快速构建大型互联网网站流量监控实现
+	分布式带来的变革
+		多节点
+			项目特点：
+			拆分：SOA微服务架构
+			部署：大规模集群网络
+			
+			试想一下：
+				目前集群网络只有100台服务器。采用人肉运维的方式，处理服务器各种异常。
+				运维人员：每一台打一个号，Excel记录下每一台机器运行特点，如果某一台服务器出现问题，运维人员直接定位机器，查询日志，修复问题。
+				
+				此时：10000台 服务器
+				
+				有一个问题：如何收集海量服务器节点上的日志，进行分析，处理？
+				
+				
+				数据分析：
+					1.ELK	    一周时间搞定的东西
+					2.hadoop	一个月都搞不定
+					
+					ELK能做的事情，图形报表的可视化分析
+					
+					E：Elasticsearch     存储日志数据
+					L: logstash			 收集日志
+					K: Kibana			 UI视图，把收集的日志数据，进行图形化界面方式直接展示给用户。
+					
+					
+				日志分散
+					微服务，SOA(现象服务架构) --> 分布式的架构：日志分散在每一个服务器
+					
+					1000台服务器
+					
+				运维成本高
+				
+				
+				ElasticStack ES技术栈
+				
+				ElasticStack
+				
+				
+				
+				
+				Logstash：数据的聚合统计分析
+					安装
+					第一个命令
+					./logstash -e 'input{ stdin{}} output{stdout{}}' //logstash 简单的启动语法
+					
+					input                                                output
+					   stdin                  pipeline                      stdout ----把输入的内容变成某种格式（Json格式）进行输出，可以输出到某一个设备中比如（ES、MYSQL）
+					第二个命令，指定输出格式为json
+					./logstash -e 'input{ stdin{}} output{stdout{ codec => json}}'    //指定输出格式为json，
+					
+					
+					看官网，学会看官网
+					./logstash -e 'input{ stdin{ codec => json}} output{stdout{ codec => json}}'    //指定输出格式为json，
+					
+					
+					//可以从很多地方读取日志，redis,log4j,kafka,es,......看官网：https://www.elastic.co/guide/en/logstash/current/input-plugins.html
+					
+					第三个指令，注意语法格式
+					./logstash -e 'input{ stdin{ codec => json}} output{elasticsearch{hosts => ["192.168.1.1:9200"] } stdout{ codec = json}}'   //将日志输出到ES，官网有例子 ,可以不写http
+					
+					output插件：elasticsearch和stdout都属于里面的插件
+					
+					
+					
+					以上的命令可读性很差，
+						可以把语句放在配置文件中，官网也有
+						
+						然后以配置文件名启动
+						./logstash -f logscconfig/logstash-simple.conf
+						
+						
+						索引库的名字是：logstash-%{+yyyy.MM.dd}
+						也可以指定名称
+							index => "stdin-log-%{+yyyy.MM.dd}"
+							
+						文件日志的收集（File）
+						
+						配置文件
+							input{
+								file{
+									path => "/root/supergo.log"
+									type => "java"
+									start_position => "beginning" /   "end" 
+								}
+							}
+							output{
+								elasticsearch{
+									hosts => [""]
+									index => "supergo-log-%{+yyyy.MM.dd}"
+								}
+								stdout{
+									codec => rubydebug 
+								}
+							}
+							
+							自动读取，增量读取
+							
+							可以读取多个文件,放入不同的索引库
+							配置文件
+							input{
+								file{
+									path => "/root/broker.log"
+									type => "broker"
+									start_position => "beginning" /   "end" 
+								}
+								file{
+									path => "/root/namesrv.log"
+									type => "namesrv"
+									start_position => "beginning" /   "end" 
+								}
+							}
+							output{
+							    if [type] == "broker"{
+									elasticsearch{
+										hosts => [""]
+										index => "broker-log-%{+yyyy.MM.dd}"
+									}
+									stdout{
+										codec => rubydebug 
+									}
+								}
+								if [type] == "namesrv"{
+									elasticsearch{
+										hosts => [""]
+										index => "namesrv-log-%{+yyyy.MM.dd}"
+									}
+									stdout{
+										codec => rubydebug //rubydebug格式，理解为json对象
+									}
+								}
+							}
+							
+							
+							收集Nginx日志
+							input{
+								file{
+									path => "/root/supergo.log"
+									type => "java"
+									start_position => "beginning" /   "end" 
+									codec => json                                //处理输出格式
+								}
+							}
+							output{
+								elasticsearch{
+									hosts => [""]
+									index => "supergo-log-%{+yyyy.MM.dd}"
+								
+								}
+								stdout{
+									codec => rubydebug 
+								}
+							}
+							
+							
+							收集项目日志
+							
+								input {
+									tcp {
+										port => 9601
+										codec => json
+									}
+								}
+								
+								
+								
+								
+						KIBANA：可视化工具
+						
+						要分析什么数据，要提前设计好
+								
