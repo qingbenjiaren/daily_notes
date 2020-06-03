@@ -1,0 +1,181 @@
+分布式事务处理标准
+www.opengroup.org：技术标准的制定
+
+X/OPEN制定了分布式事务的处理标准
+	1、DTP(distribute transaction process)事务模型
+		1）应用程序（AP）：定义事务边界（事务开始，结束）
+		2）资源管理器（Resource Manager：RM）：任何用来存储数据的服务
+		3）事务管理器（Transaction Manager:TM）:监控事务进度，负责事务提交，回滚
+		4）通信资源管理（Communcation Resource Manager:CRM）
+		5）通信协议（负责事务模型之间的通信协议）
+		
+制定了TM和RM之间交互接口规范，XA接口规范
+		1）xa_reg注册一个事务
+		2）xa_start
+		3）xa_close
+		主要描述一个TM和RM之间事务处理交互规范
+		作用：
+		思考：如果没有xa接口规范，分布式事务的处理上会发生什么？
+			提示：RM：资源管理器（任何存储数据）
+					1）MYSQL
+					2）Oracle
+					3）sqlserver
+					4）rocketMQ
+			结论：如果没有一个技术标准，各个产品都开发一套自己的分布式事务处理标准，数据一致性处理无法兼容
+			XA接口标准制定后，
+				Mysql5.7版本实现了对XA接口集成
+				rocketmq集成了XA接口规范
+				
+			spring控制事务，spring tm进行改造，实现XA接口
+		
+		
+DTP:全局事务树模型
+	微服务架构，存在链式调用
+	
+			问题：TM（事务管理器）存在的状态是什么（jar,服务）？？？
+				jar ---- 
+						atomikos
+				服务  --- 第三方服务，控制分布式事务
+						seata
+						lcn
+			如果使用jar包，各个TM之间需要通信
+			
+			如果使用第三方服务，直接在服务上协调
+	
+	分布式事务的处理方法：
+		2pc（2 phase commit） 3pc(3 phase commit)
+		
+		AP只需要开始事务，提交事务，而其他的，TM和RM处理
+			注意：AP提交只有并不是真正的提交，而是通知TM处理
+		2 phase commit存在的问题
+			1、阻塞问题
+				TM和RM的交互处于阻塞状态，若TM宕机，事务一致处于阻塞状态
+			2、数据一致性问题
+				commit阶段
+				RM1已经提交
+				RM2网络原因没有送达
+				出现数据不一致
+		3pc
+			三阶段提交，是二阶段提交的改进版本
+				canCommit?
+				yes
+				preCommit
+				ack
+				doCommit
+				haveCommited
+				
+LCN分布式事务
+
+分布式事务的控制原理
+	三种模式
+	LCN
+	TXC
+	TCC
+	
+	
+	分布式事务解决方案
+	
+		1、对connection（连接数据库的连接）拦截代理，控制分布式事务
+				拦截connection，生成代理对象
+				假提交
+				TM协调commit
+		2、逆向SQL方式控制分布式事务
+			原理：在执行SQL之前，查询SQL影响的行数（数据），保存SQL快照信息，当需要回滚时，根据快照信息生成逆向SQL
+			
+		3、TCC业务不错机制，人肉补偿-------代码复杂度高，代码侵入性非常高
+				try{
+				
+				}catch(Exception e){
+					
+				}
+				
+				在生产环境中，采用tcc方式控制分布式事务 ----- 三个方法，开发规范
+				
+				1、try
+				2、confirm
+				3、cancel
+				
+				
+				由TM统一协调
+				
+			
+				日志方式：
+				public xx rpcTry(){
+					//记录日志
+					todo save log: a转出100元
+					todo save log: b转入了100元
+					//执行业务
+					a - 100;
+					b - 100;
+				}
+				
+				public xx confirm(){
+					//删除log日志记录即可(删除刚才记录的日志)
+				}
+				
+				public xx cancel(){
+					//加载日志
+					todo save log: a转出100元
+					todo save log: b转入了100元
+					
+					a +100;
+					b + 100;
+					//也可以做最终一致性，定时检查日志，做数据同步
+				}
+				
+				业务方式：完全基于业务的补偿机制
+				
+				
+				tcc-transaction-dubbo-sample
+				
+		分布式事务的解决方案
+			1、第一种解决方案：JTA(Java Transaction API) ------XA接口的Java版本。
+				JTA接口规范产生后：J2EE中服务产品也对JTA做了实现，
+					1）Jboss
+					2）weblogic
+					也就是说，服务部署在Jboss，weblogic服务器中，就可以实现分布式事务控制。
+					问题：如果使用tomcat服务器，无法使用JTA的方式控制分布式事务了吗？
+					
+					虽然tomcat没有实现实现JTA的控制规范，但是可以使用第三方JTA分布式事务框架控制分布式事务
+					可以引入atomikos框架处理JTA分布式事务
+					atomikos,底层是XA的两阶段提交
+			2、lcn框架处理分布式事务
+				connection
+				逆向SQL
+				tcc 日志补偿
+			3、tcc业务补偿机制
+			
+			4、消息中间件实现数据的最终一致性
+				RocketMQ:------实现XA接口，半消息机制 ---- 可以保证消息和本地事务同时成功，同时失败
+				原因：消息中间件数据一致性处理方式，把复杂得数据一致性变成简单的本地事务进行处理，非常简单
+				把复杂问题变简单
+				问题：
+					1、消息发送失败：消息发送失败，本地事务回滚
+					2、消息接收失败
+							重试
+							消息回发（定时重新投递）
+							人工投递
+							消息表重新投递
+					3、本地事务失败
+							本地消息失败，远程接收不到消息
+					4、远程事务失败
+							最终一致性。重新消费消息
+				RocketMQ的半消息机制是一个原子的操作，
+				
+				如果不使用RocketMQ而使用其他中间件，就需要用到消息表了
+					RabbitMQ --- MQ消息中间件 ----------------- ebay公司
+						在同一个事务下（保证原子性）
+							1、写业务数据 ----  业务表
+							2、写消息数据 ---- 消息表
+							3、发送消息MQ
+					
+					
+					
+	
+	
+	
+
+
+			
+
+
