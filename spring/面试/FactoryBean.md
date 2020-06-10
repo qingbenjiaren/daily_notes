@@ -127,7 +127,7 @@ private <T> NamedBeanHolder<T> resolveNamedBean(Class<T> requiredType, Object...
         Assert.notNull(requiredType, "Required type must not be null");
         //这个方法是根据传入的Class类型来获取BeanName，因为我们有一个接口有多个实现类的情况(多态)，
         //所以这里返回的是一个String数组。这个过程也比较复杂。
-        //这里需要注意的是，我们调用getBean方法传入的type为com.zkn.spring.learn.service.FactoryBeanService类型，但是我们没有在Spring容器中注入FactoryBeanService类型的Bean
+        //这里需要注意的是，我们调用getBean方法传入的type为com.zkn.spring.learn.service.SomeService类型，但是我们没有在Spring容器中注入SomeService类型的Bean
         //正常来说我们在这里是获取不到beanName呢。但是事实是不是这样呢？看下面我们对getBeanNamesForType的分析
         String[] candidateNames = getBeanNamesForType(requiredType);
         //如果有多个BeanName，则挑选合适的BeanName
@@ -185,7 +185,7 @@ private <T> NamedBeanHolder<T> resolveNamedBean(Class<T> requiredType, Object...
 
 ```
 
-在上面的代码中我们说我们传入的type是com.zkn.spring.learn.service.FactoryBeanService类型，但是在我们的Spring容器中却没有FactoryBeanService类型的Bean，那么我们是怎么从getBeanNamesForType获取到beanName的呢？ 
+在上面的代码中我们说我们传入的type是com.zkn.spring.learn.service.SomeService类型，但是在我们的Spring容器中却没有SomeService类型的Bean，那么我们是怎么从getBeanNamesForType获取到beanName的呢？ 
 getBeanNamesForType的分析
 
 ```java
@@ -329,7 +329,7 @@ protected Class<?> getTypeForFactoryBean(final FactoryBean<?> factoryBean) {
 
 我们在调用factoryBeanLearn的getObjectType方法的时候，获取到的值为：com.zkn.spring.learn.service.FactoryBeanService和我们传入的type是一样的类型。所以这里返回true，根据我们上面说的如果isTypeMatch返回true的话，我们返回的beanName为factoryBeanLearn。 
 
-上面的分析总结起来是：我们调用getBean(Class requiredType)方法根据类型来获取容器中的bean的时候，对应我们的例子就是：根据类型com.zkn.spring.learn.service.FactoryBeanService来从Spring容器中获取Bean(首先明确的一点是在Spring容器中没有FactoryBeanService类型的BeanDefinition。但是却有一个Bean和FactoryBeanService这个类型有一些关系)。Spring在根据type去获取Bean的时候，会先获取到beanName。获取beanName的过程是：先循环Spring容器中的所有的beanName，然后根据beanName获取对应的BeanDefinition，如果当前bean是FactoryBean的类型，则会从Spring容器中根据beanName获取对应的Bean实例，接着调用获取到的Bean实例的getObjectType方法获取到Class类型，判断此Class类型和我们传入的Class是否是同一类型。如果是则返回测beanName，对应到我们这里就是：根据factoryBeanLearn获取到FactoryBeanLearn实例，调用FactoryBeanLearn的getObjectType方法获取到返回值FactoryBeanService.class。和我们传入的类型一致，所以这里获取的beanName为factoryBeanLearn。换句话说这里我们把factoryBeanLearn这个beanName映射为了：FactoryBeanService类型。**即FactoryBeanService类型对应的beanName为factoryBeanLearn**这是很重要的一点。
+上面的分析总结起来是：我们调用getBean(Class requiredType)方法根据类型来获取容器中的bean的时候，对应我们的例子就是：根据类型com.zkn.spring.learn.service.FactoryBeanService来从Spring容器中获取Bean(首先明确的一点是在Spring容器中没有FactoryBeanService类型的BeanDefinition。但是却有一个Bean和FactoryBeanService这个类型有一些关系)。Spring在根据type去获取Bean的时候，会先获取到beanName。获取beanName的过程是：先循环Spring容器中的所有的beanName，然后根据beanName获取对应的BeanDefinition，如果当前bean是FactoryBean的类型，则会从Spring容器中根据beanName获取对应的Bean实例，接着调用获取到的Bean实例的getObjectType方法获取到Class类型，判断此Class类型和我们传入的Class是否是同一类型。如果是则返回测beanName，对应到我们这里就是：根据factoryBeanLearn获取到FactoryBeanLearn实例，调用FactoryBeanLearn的getObjectType方法获取到返回值FactoryBeanService.class。和我们传入的类型一致，所以这里获取的beanName为factoryBeanLearn。换句话说这里我们把factoryBeanLearn这个beanName映射为了：FactoryBeanService类型。**即SomeService类型对应的beanName为factoryBeanLearn**这是很重要的一点。
 
 
 
