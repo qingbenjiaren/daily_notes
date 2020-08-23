@@ -1,0 +1,267 @@
+flume用来做大数据传输
+	数据想传到哪里去？
+		mysql
+		磁盘
+		es
+		kafka
+		
+	flume定义
+		Flume是Cloudera提供的一个高可用的，高可靠的，分布式的海量日志采集、聚合和传输的系统
+		只能穿日志数据，文本文件，不能包括字节流。图片可转成文本？
+		
+		为什么选用flume
+			日志来源
+				java后台日志
+				python爬虫
+				
+				以上两种日志都是在本地文件系统
+				
+				数据是实时产生的，
+				Flume最主要的作用就是，实时读取服务器本地磁盘的数据（网络端口数据），将数据写到HDFS
+	
+	
+	
+	tail -f 实时获取动态的变更信息
+	
+	netcat 瑞士军刀，短小锋利
+	
+	三大组件（官网可以看）
+		source
+		sink
+		channel
+		
+		Flume Channel Selector
+		Flume Sink Processors
+		
+		以事件的形式将数据从源头送至目的。
+		
+		
+		Event
+			header:头信息
+			body：数据内容
+			
+			
+	flume install
+	tar -zxvf apache-flume-1.9.0-bin.tar.gz -C /usr/apps/
+	
+	配置文件中，有log4j.properties，不用修改，默认在目录下
+	
+	修改flume-env.sh 只需要改一下java_home
+	echo $JAVA_HOME
+	
+	分布式，高可用，高性能，日志
+	
+	分布式是由：avolo sink 和 avolo source组合来的
+	
+	
+	监听端口数据官方案例
+		安装Nc yum install -y nc
+		
+		
+	
+		
+	
+		nc输入
+		控制台输出
+		
+		配置配置文件
+			netcat-flume-logger.conf
+			
+			可以看看官方案例
+			# example.conf: A single-node Flume configuration
+
+			# Name the components on this agent
+			a1.sources = r1
+			a1.sinks = k1
+			a1.channels = c1
+
+			# Describe/configure the source
+			a1.sources.r1.type = netcat
+			a1.sources.r1.bind = localhost
+			a1.sources.r1.port = 44444
+
+			# Describe the sink
+			a1.sinks.k1.type = logger
+
+			# Use a channel which buffers events in memory
+			a1.channels.c1.type = memory
+			a1.channels.c1.capacity = 1000
+			a1.channels.c1.transactionCapacity = 100
+
+			# Bind the source and sink to the channel
+			a1.sources.r1.channels = c1
+			a1.sinks.k1.channel = c1
+			
+			
+			五个部分
+				第一个部分，命名组件：Name the components on this agent
+						a1.sources = r1
+						a1.sinks = k1
+						a1.channels = c1
+						都加了-s（复数），说明可以配多个
+						a1,代表的是当前agent的名字
+						
+				第二个部分：Describe/configure the source  描述和配置当前的source
+						a1.sources.r1.type = netcat
+						a1.sources.r1.bind = localhost
+						a1.sources.r1.port = 44444
+						
+				第三个部分：# Describe the sink  描述sink
+						a1.sinks.k1.type = logger
+						
+				第四个部分：# Use a channel which buffers events in memory 配置channel
+						a1.channels.c1.type = memory          				#方式
+						a1.channels.c1.capacity = 1000						#容量，1000代表1000个事件
+						a1.channels.c1.transactionCapacity = 100			#事务  
+						
+				第五个部分：# Bind the source and sink to the channel  绑定三个组件之间的关系
+						a1.sources.r1.channels = c1					#注意，有-s（复数）
+						a1.sinks.k1.channel = c1					#注意，无-s（单数）
+						说明：一个source可以传到多个channel
+							 一个sink只能接收一个channel
+							 
+							 
+				启动命令
+				bin/flume-ng agent --conf conf/ --conf-file job/netcat-flume-logger.conf --name a1 -Dflume.root.logger=INFO,console
+				                        目录               配置文件       agent名字        logger的级别
+				
+				也可以
+				bin/flume-ng agent -c conf/ -f job/netcat-flume-logger.conf -n a1 -Dflume.root.logger=INFO,console
+										
+										
+				启动客户端
+					nc localhost 44444
+					发送 hello
+					
+				服务器端
+					[INFO - org.apache.flume.sink.LoggerSink.process(LoggerSink.java:95)] Event: { headers:{} body: 68 65 6C 6C 6F                                  hello }
+					
+					
+				钩子程序
+					一般做收尾工作
+					
+					
+		第二个官方案例
+			实时监控单个追加文件
+				Exec source
+				可以直接在官方文档上面找：Exec，找到大标题，flume的官方文档做的好，可以直接搜索
+				黑体的是必须要配置的
+				非黑体的要么有默认值，要么可以不配
+				 channels
+				 type
+				 command
+				 
+				 
+					a1.sources.r1.type = exec
+					a1.sources.r1.command = tail -f 文件路径
+					
+					tail -f
+					tail -F
+					大写F和小写f的区别，小写f失败就失败了（默认会读10行），大写F失败了会重试
+					
+					
+		Flume事务
+			数据输入端  Web Server（端口，本地文件，文件夹，单个文件，多个文件）
+			
+			看processon图
+			
+		Flume Agent内部原理
+		
+		
+		    Channel Selector（看官网）
+				Replicating Channel Selector (default)
+					a1.sources = r1
+					a1.channels = c1 c2 c3
+					a1.sources.r1.selector.type = replicating
+					a1.sources.r1.channels = c1 c2 c3
+					a1.sources.r1.selector.optional = c3
+				
+				Multiplexing Channel Selector
+					a1.sources = r1
+					a1.channels = c1 c2 c3 c4
+					a1.sources.r1.selector.type = multiplexing
+					a1.sources.r1.selector.header = state     header map 的key
+					a1.sources.r1.selector.mapping.CZ = c1    header map 的value
+					a1.sources.r1.selector.mapping.US = c2 c3
+					a1.sources.r1.selector.default = c4
+					
+			Sink Processor（看官网）
+					Default Sink Processor
+					Failover Sink Processor
+					Load balancing Sink Processor
+					
+			
+		
+		Flume拓扑结构
+				
+				
+				
+				flume存在单点故障的问题
+				
+		
+		Flume在大数据中扮演传输的角色，其主要作用就是，实时读取服务器本地磁盘的数据，将数据写入到HDFS
+		
+			Agent
+				Agent是一个JVM进程，它以事件的形式将数据从源头传送到目的地
+				
+				Source：netcat,exec（tail -F -C +0）,split Directory,avro
+				
+				channel：
+				
+				sink：
+				
+				
+		Flume拦截器
+			1）案例需求
+				使用Flume采集服务器本地日志，需要按照日志类型的不同，将不同的种类的日志发往不同的分析系统
+			2）需求分析
+				在实际的开发中，一台服务器的日志类型可能有很多种，不同类型的日志可能需要发送到不同的分析系统。此时会用到Flume拓扑结构中的Multiplexing结构，原理是根据event中的header的某个key的值，将不同的event发送到不同的Channel中
+				所以我们需要自定义一个Interceptor区分字数和字母，将其分别发往不同的分析系统（Channel）
+				
+			官方文档中，找到Flume interceptor，看看配置文件中配置的interceptor
+			 Interceptors are classes that implement org.apache.flume.interceptor.Interceptor interface
+					a1.sources = r1
+					a1.sinks = k1
+					a1.channels = c1
+					a1.sources.r1.interceptors = i1 i2
+					a1.sources.r1.interceptors.i1.type = org.apache.flume.interceptor.HostInterceptor$Builder
+					a1.sources.r1.interceptors.i1.preserveExisting = false
+					a1.sources.r1.interceptors.i1.hostHeader = hostname
+					a1.sources.r1.interceptors.i2.type = org.apache.flume.interceptor.TimestampInterceptor$Builder
+					a1.sinks.k1.filePrefix = FlumeData.%{CollectorHost}.%Y-%m-%d
+					a1.sinks.k1.channel = c1
+					要在配置文件中配类的全路径名
+					
+				代码实现 Interceptor
+					第一步：获取事件中的头信息
+					Map<String,String> headers = event.getHeaders();
+					第二部：获取事件中的body信息
+					String body = new String(event.getBody());
+					第三部：根据body中是否有"hello"来决定添加怎样的头信息
+					if(body.contains("hello")){
+						headers.put("type","C1");//添加头信息
+					}else{
+						headers.put("type","C2");//添加头信息
+					}
+					
+					还要写一个Builder静态内部类implements Interceptor.Builder
+					
+					选择器配置channel，channel对应的sink，所以就实现了interceptor的功能
+					
+					
+				配置文件：
+					配channel选择器，官网可看
+					
+					
+					工作中的疑问，索引Index是否不固定，channel之前是监听的端口的各种信息到chennel，是否是到一个channel
+					
+					
+				
+				
+			
+				
+			
+			
+				
+				
+				

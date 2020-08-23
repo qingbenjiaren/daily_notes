@@ -1,0 +1,28 @@
+RPC框架
+	hsf：淘宝
+	dubbo：阿里巴巴B2B
+	sofa：蚂蚁金服
+	
+	Dubbo使用“微内核+插件”的设计模式。内核只负责组装插件（扩展点），Dubbo的功能都是由插件实现的，
+	也就是Dubbo的所有功能点都可被用户自定义扩展类锁替换。
+		改一个功能只需要改一个类就行了
+	采用URL作为配置信息的统一格式，所有扩展点都通过传递URL携带配置信息
+	
+	Dubbbo的三大领域模型
+		Protocol 服务域
+		Invoker 实体域：是Dubbo的核心模型，是服务提供者的代理对象
+		Invocation 会话域：远程调用的参数
+	
+	Dubbo的四大组件：
+		Registry
+		Provider
+		Conrainer
+		Consumer
+		Monitor
+	
+	Dubbo的十层架构
+		
+		整体三大层
+			business
+			RPC
+			remoting

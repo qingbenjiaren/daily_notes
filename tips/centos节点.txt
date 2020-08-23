@@ -16,6 +16,14 @@
 
 160 Nginx0    
 
+171 k8s
+172 k8s
+173 k8s
+
+190 gitlab 2cpu 4GB
+191 flume
+
+
 200 zk
 201 zk01
 202 zk02
