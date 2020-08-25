@@ -1,0 +1,81 @@
+mock：用一个假的服务模拟一个真的服务，mock的服务完全在我们的控制之下，模拟输出我们想要的数据
+
+如果服务是在代码中通过new的方式创建的，这时我们就不能mock服务区替换了。
+这里有两个关键的设计原则：依赖注入、基于接口
+
+
+
+其中有一个，就是代码中包含跟“时间”有关的“未决行为”逻辑。我们一般的处理方式是将这种未决行为逻辑重新封装。
+
+
+public class Transaction {
+
+  protected boolean isExpired() {
+    long executionInvokedTimestamp = System.currentTimestamp();
+    return executionInvokedTimestamp - createdTimestamp > 14days;
+  }
+  
+  public boolean execute() throws InvalidTransactionException {
+    //...
+      if (isExpired()) {
+        this.status = STATUS.EXPIRED;
+        return false;
+      }
+    //...
+  }
+}
+
+
+测试用例
+
+
+public void testExecute_with_TransactionIsExpired() {
+  Long buyerId = 123L;
+  Long sellerId = 234L;
+  Long productId = 345L;
+  Long orderId = 456L;
+  Transction transaction = new Transaction(null, buyerId, sellerId, productId, orderId) {
+    protected boolean isExpired() {
+      return true;
+    }
+  };
+  boolean actualResult = transaction.execute();
+  assertFalse(actualResult);
+  assertEquals(STATUS.EXPIRED, transaction.getStatus());
+}
+
+实际上，可测试性差的代码，本身设计就有问题
+
+在写代码时也应该思考一下是否方便编写单元测试代码
+
+
+典型的、常见的测试性不好的代码
+
+	1. 未决行为
+	
+		所谓的未决行为逻辑就是，代码的输出是随机或者说不确定的，比如，跟时间、随机数有关的代码。
+		
+	2. 可变全局变量
+		
+		全局变量是一种面向过程的编程风格，有种种弊端。实际上，滥用全局变量也让编写单元测试变得困难。
+		
+	3. 耗时复杂静态方法
+		
+	
+
+	4. 复杂继承
+		
+		如果父类需要 mock 某个依赖对象才能进行单元测试，那所有的子类、子类的子类……在编写单元测试的时候，都要 mock 这个依赖对象。
+	
+	5. 高耦合代码
+	
+		如果一个类职责很重，需要依赖十几个外部对象才能完成工作，代码高度耦合，那我们在编写单元测试的时候，可能需要 mock 这十几个依赖的对象。
+		
+
+1. 什么是代码的可测试性？
+	粗略地讲，所谓代码的可测试性，就是针对代码编写单元测试的难易程度。对于一段代码，如果很难为其编写单元测试，或者单元测试写起来很费劲，需要依靠单元测试框架中很高级的特性，那往往就意味着代码设计得不够合理，代码的可测试性不好。
+		
+2. 编写可测试性代码的最有效手段
+	
+	依赖注入是编写可测试性代码的最有效手段。通过依赖注入，我们在编写单元测试的时候，可以通过 mock 的方法解依赖外部服务，这也是我们在编写单元测试的过程中最有技术挑战的地方。
+	
