@@ -1,0 +1,235 @@
+熟悉的策略模式
+	这个模式也比较常用。最常见的应用场景是，利用它来避免冗长的 if-else 或 switch 分支判断
+	
+	不过，它的作用还不止如此。它也可以像模板模式那样，提供框架的扩展点等等。
+	
+	定义一族算法类，将每个算法分别封装起来，让它们可以互相替换。
+	策略模式可以使算法的变化独立于使用它们的客户端（这里的客户端代指使用算法的代码）。
+	
+		
+		工厂模式是解耦对象的创建和使用，观察者模式是解耦观察者和被观察者
+		策略模式解耦的是策略的定义、创建、使用这三部分。
+		
+		
+		如何实现一个支持给不同大小文件排序的小程序
+		
+		设计原则和思想其实比设计模式更加普适和重要，
+		掌握了代码的设计原则和思想，我们甚至可以自己创造出来新的设计模式。
+		
+		实现对一个文件进行排序的功能。文件中只包含整型数，并且，相邻的数字通过逗号来区隔
+		
+		
+		
+			public class Sorter {
+			  private static final long GB = 1000 * 1000 * 1000;
+
+			  public void sortFile(String filePath) {
+				// 省略校验逻辑
+				File file = new File(filePath);
+				long fileSize = file.length();
+				if (fileSize < 6 * GB) { // [0, 6GB)
+				  quickSort(filePath);
+				} else if (fileSize < 10 * GB) { // [6GB, 10GB)
+				  externalSort(filePath);
+				} else if (fileSize < 100 * GB) { // [10GB, 100GB)
+				  concurrentExternalSort(filePath);
+				} else { // [100GB, ~)
+				  mapreduceSort(filePath);
+				}
+			  }
+
+			  private void quickSort(String filePath) {
+				// 快速排序
+			  }
+
+			  private void externalSort(String filePath) {
+				// 外部排序
+			  }
+
+			  private void concurrentExternalSort(String filePath) {
+				// 多线程外部排序
+			  }
+
+			  private void mapreduceSort(String filePath) {
+				// 利用MapReduce多机排序
+			  }
+			}
+
+			public class SortingTool {
+			  public static void main(String[] args) {
+				Sorter sorter = new Sorter();
+				sorter.sortFile(args[0]);
+			  }
+			}
+			
+			
+		如果我们是在开发一个大型项目，排序文件只是其中的一个功能模块，
+		那我们就要在代码设计、代码质量上下点儿功夫了
+		只有每个小的功能模块都写好，整个项目的代码才能不差。
+		
+		
+		将 Sorter 类中的某些代码拆分出来，独立成职责更加单一的小类。
+		
+		
+		
+		
+			public interface ISortAlg {
+			  void sort(String filePath);
+			}
+
+			public class QuickSort implements ISortAlg {
+			  @Override
+			  public void sort(String filePath) {
+				//...
+			  }
+			}
+
+			public class ExternalSort implements ISortAlg {
+			  @Override
+			  public void sort(String filePath) {
+				//...
+			  }
+			}
+
+			public class ConcurrentExternalSort implements ISortAlg {
+			  @Override
+			  public void sort(String filePath) {
+				//...
+			  }
+			}
+
+			public class MapReduceSort implements ISortAlg {
+			  @Override
+			  public void sort(String filePath) {
+				//...
+			  }
+			}
+
+			public class Sorter {
+			  private static final long GB = 1000 * 1000 * 1000;
+
+			  public void sortFile(String filePath) {
+				// 省略校验逻辑
+				File file = new File(filePath);
+				long fileSize = file.length();
+				ISortAlg sortAlg;
+				if (fileSize < 6 * GB) { // [0, 6GB)
+				  sortAlg = new QuickSort();
+				} else if (fileSize < 10 * GB) { // [6GB, 10GB)
+				  sortAlg = new ExternalSort();
+				} else if (fileSize < 100 * GB) { // [10GB, 100GB)
+				  sortAlg = new ConcurrentExternalSort();
+				} else { // [100GB, ~)
+				  sortAlg = new MapReduceSort();
+				}
+				sortAlg.sort(filePath);
+			  }
+			}
+			
+			
+	将排序算法设计成独立的类，跟具体的业务逻辑（代码中的 if-else 那部分逻辑）解耦，
+	
+	
+	再次重构
+
+
+		public class SortAlgFactory {
+		  private static final Map<String, ISortAlg> algs = new HashMap<>();
+
+		  static {
+			algs.put("QuickSort", new QuickSort());
+			algs.put("ExternalSort", new ExternalSort());
+			algs.put("ConcurrentExternalSort", new ConcurrentExternalSort());
+			algs.put("MapReduceSort", new MapReduceSort());
+		  }
+
+		  public static ISortAlg getSortAlg(String type) {
+			if (type == null || type.isEmpty()) {
+			  throw new IllegalArgumentException("type should not be empty.");
+			}
+			return algs.get(type);
+		  }
+		}
+
+		public class Sorter {
+		  private static final long GB = 1000 * 1000 * 1000;
+
+		  public void sortFile(String filePath) {
+			// 省略校验逻辑
+			File file = new File(filePath);
+			long fileSize = file.length();
+			ISortAlg sortAlg;
+			if (fileSize < 6 * GB) { // [0, 6GB)
+			  sortAlg = SortAlgFactory.getSortAlg("QuickSort");
+			} else if (fileSize < 10 * GB) { // [6GB, 10GB)
+			  sortAlg = SortAlgFactory.getSortAlg("ExternalSort");
+			} else if (fileSize < 100 * GB) { // [10GB, 100GB)
+			  sortAlg = SortAlgFactory.getSortAlg("ConcurrentExternalSort");
+			} else { // [100GB, ~)
+			  sortAlg = SortAlgFactory.getSortAlg("MapReduceSort");
+			}
+			sortAlg.sort(filePath);
+		  }
+		}
+
+		再次重构
+		
+		
+		public class Sorter {
+		  private static final long GB = 1000 * 1000 * 1000;
+		  private static final List<AlgRange> algs = new ArrayList<>();
+		  static {
+			algs.add(new AlgRange(0, 6*GB, SortAlgFactory.getSortAlg("QuickSort")));
+			algs.add(new AlgRange(6*GB, 10*GB, SortAlgFactory.getSortAlg("ExternalSort")));
+			algs.add(new AlgRange(10*GB, 100*GB, SortAlgFactory.getSortAlg("ConcurrentExternalSort")));
+			algs.add(new AlgRange(100*GB, Long.MAX_VALUE, SortAlgFactory.getSortAlg("MapReduceSort")));
+		  }
+
+		  public void sortFile(String filePath) {
+			// 省略校验逻辑
+			File file = new File(filePath);
+			long fileSize = file.length();
+			ISortAlg sortAlg = null;
+			for (AlgRange algRange : algs) {
+			  if (algRange.inRange(fileSize)) {
+				sortAlg = algRange.getAlg();
+				break;
+			  }
+			}
+			sortAlg.sort(filePath);
+		  }
+
+		  private static class AlgRange {
+			private long start;
+			private long end;
+			private ISortAlg alg;
+
+			public AlgRange(long start, long end, ISortAlg alg) {
+			  this.start = start;
+			  this.end = end;
+			  this.alg = alg;
+			}
+
+			public ISortAlg getAlg() {
+			  return alg;
+			}
+
+			public boolean inRange(long size) {
+			  return size >= start && size < end;
+			}
+		  }
+		}
+		
+		
+	对于 Java 语言来说，我们可以通过反射来避免对策略工厂类的修改。
+	具体是这么做的：我们通过一个配置文件或者自定义的 annotation 来标注都有哪些策略类；
+	策略工厂类读取配置文件或者搜索被 annotation 标注的策略类，然后通过反射动态地加载这些策略类、
+	创建策略对象；当我们新添加一个策略的时候，只需要将这个新添加的策略类添加到配置文件或者用 
+	annotation 标注即可。还记得上一节课的课堂讨论题吗？我们也可以用这种方法来解决。
+	
+	
+	遵循 KISS 原则，怎么简单怎么来，就是最好的设计。非得用策略模式，搞出 n 多类，反倒是一种过度设计。
+	
+	
+	实际上，设计原则和思想比设计模式更加普适和重要。掌握了代码的设计原则和思想，
+	我们能更清楚的了解，为什么要用某种设计模式，就能更恰到好处地应用设计模式。
