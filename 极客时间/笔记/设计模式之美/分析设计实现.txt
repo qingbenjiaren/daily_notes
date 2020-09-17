@@ -1,0 +1,14 @@
+小步快跑，逐步迭代
+
+	版本一
+		MetricsCollector：负责打点采集原始数据，包括记录每次接口请求的响应时间和请求时间戳，并调用 MetricsStorage 提供的接口来存储这些原始数据。
+		
+		MetricsStorage 和 RedisMetricsStorage：负责原始数据的存储和读取。
+		
+		Aggregator：是一个工具类，负责各种统计数据的计算，比如响应时间的最大值、最小值、平均值、百分位值、接口访问次数、tps。
+		
+		ConsoleReporter 和 EmailReporter：相当于一个上帝类（God Class），定时根据给定的时间区间，从数据库中取出数据，借助 Aggregator 类完成统计工作，并将统计结果输出到相应的终端，比如命令行、邮件。
+	
+	MetricCollector、MetricsStorage、RedisMetricsStorage 的设计与实现比较简单，不是版本 2 重构的重点。今天，我们重点来看一下 Aggregator 和 ConsoleReporter、EmailReporter 这几个类。
+	
+	

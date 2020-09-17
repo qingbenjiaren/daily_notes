@@ -1,0 +1,78 @@
+“ID”中文翻译为“标识（Identifier）”。这个概念在生活、工作中随处可见，比如身份证、商品条形码、二维码、车牌号、驾照号。聚焦到软件开发中，ID 常用来表示一些业务信息的唯一标识，比如订单的单号或者数据库中的唯一主键，比如地址表中的 ID 字段（实际上是没有业务含义的，对用户来说是透明的，不需要关注）。
+
+打印日志时，需要打印请求的唯一标识，为每个请求分配一个唯一ID
+
+我们可以给每个请求分配一个唯一 ID，并且保存在请求的上下文（Context）中，比如，处理请求的工作线程的局部变量中。在 Java 语言中，我们可以将 ID 存储在 Servlet 线程的 ThreadLocal 中，或者利用 Slf4j 日志框架的 MDC（Mapped Diagnostic Contexts）来实现（实际上底层原理也是基于线程的 ThreadLocal）。
+
+
+每次打印日志的时候，我们从请求上下文中取出请求 ID，跟日志一块输出。
+
+问题代码
+	
+public class IdGenerator {
+  private static final Logger logger = LoggerFactory.getLogger(IdGenerator.class);
+
+  public static String generate() {
+    String id = "";
+    try {
+      String hostName = InetAddress.getLocalHost().getHostName();
+      String[] tokens = hostName.split("\\.");
+      if (tokens.length > 0) {
+        hostName = tokens[tokens.length - 1];
+      }
+      char[] randomChars = new char[8];
+      int count = 0;
+      Random random = new Random();
+      while (count < 8) {
+        int randomAscii = random.nextInt(122);
+        if (randomAscii >= 48 && randomAscii <= 57) {
+          randomChars[count] = (char)('0' + (randomAscii - 48));
+          count++;
+        } else if (randomAscii >= 65 && randomAscii <= 90) {
+          randomChars[count] = (char)('A' + (randomAscii - 65));
+          count++;
+        } else if (randomAscii >= 97 && randomAscii <= 122) {
+          randomChars[count] = (char)('a' + (randomAscii - 97));
+          count++;
+        }
+      }
+      id = String.format("%s-%d-%s", hostName,
+              System.currentTimeMillis(), new String(randomChars));
+    } catch (UnknownHostException e) {
+      logger.warn("Failed to get the host name.", e);
+    }
+
+    return id;
+  }
+}
+
+
+依赖注入之所以能提高代码可测试性，主要是因为，通过这样的方式我们能轻松地用 mock 对象替换依赖的真实对象。那我们为什么要 mock 这个对象呢？这是因为，这个对象参与逻辑执行（比如，我们要依赖它输出的数据做后续的计算）但又不可控。对于 Logger 对象来说，我们只往里写入数据，并不读取数据，不参与业务逻辑的执行，不会影响代码逻辑的正确性，所以，我们没有必要 mock Logger 对象。
+
+重构
+	
+	第一轮重构：提高代码的可读性
+		
+		hostName 变量不应该被重复使用，尤其当这两次使用时的含义还不同的时候；
+		
+		将获取 hostName 的代码抽离出来，定义为 getLastfieldOfHostName() 函数；
+		
+		删除代码中的魔法数，比如，57、90、97、122；
+		
+		将随机数生成的代码抽离出来，定义为 generateRandomAlphameric() 函数；
+		
+		generate() 函数中的三个 if 逻辑重复了，且实现过于复杂，我们要对其进行简化；
+		
+		对 IdGenerator 类重命名，并且抽象出对应的接口。
+		
+			命名方式一：
+			
+			命名方式二：
+			
+			命名方式三：
+	
+	第二轮重构：提高代码的可测试性
+	
+	第三轮重构：编写完善的单元测试
+	
+	第四轮重构：所有重构完成之后添加注释
