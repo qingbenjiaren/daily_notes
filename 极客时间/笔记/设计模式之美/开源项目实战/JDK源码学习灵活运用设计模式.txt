@@ -1,0 +1,604 @@
+学习的目的是让你体会，在真实的项目开发中，要学会活学活用，切不可过于死板，生搬硬套设计模式的设计与实现。
+
+工厂模式在Calendar类中的应用
+	
+	java.util.Calendar。从命名上，我们无法看出它是一个工厂类。
+	
+	功能代码和工厂方法代码耦合在了一个类中
+	
+	即便我们去查看它的源码，如果不细心的话，也很难发现它用到了工厂模式
+	
+		在抽象类中设置工厂方法，提供子类对象，我去----by yushuang
+	
+		public abstract class Calendar implements Serializable, Cloneable, Comparable<Calendar> {
+		  //...
+		  public static Calendar getInstance(TimeZone zone, Locale aLocale){
+			return createCalendar(zone, aLocale);
+		  }
+
+		  private static Calendar createCalendar(TimeZone zone,Locale aLocale) {
+			CalendarProvider provider = LocaleProviderAdapter.getAdapter(
+				CalendarProvider.class, aLocale).getCalendarProvider();
+			if (provider != null) {
+			  try {
+				return provider.getInstance(zone, aLocale);
+			  } catch (IllegalArgumentException iae) {
+				// fall back to the default instantiation
+			  }
+			}
+
+			Calendar cal = null;
+			if (aLocale.hasExtensions()) {
+			  String caltype = aLocale.getUnicodeLocaleType("ca");
+			  if (caltype != null) {
+				switch (caltype) {
+				  case "buddhist":
+					cal = new BuddhistCalendar(zone, aLocale);
+					break;
+				  case "japanese":
+					cal = new JapaneseImperialCalendar(zone, aLocale);
+					break;
+				  case "gregory":
+					cal = new GregorianCalendar(zone, aLocale);
+					break;
+				}
+			  }
+			}
+			if (cal == null) {
+			  if (aLocale.getLanguage() == "th" && aLocale.getCountry() == "TH") {
+				cal = new BuddhistCalendar(zone, aLocale);
+			  } else if (aLocale.getVariant() == "JP" && aLocale.getLanguage() == "ja" && aLocale.getCountry() == "JP") {
+				cal = new JapaneseImperialCalendar(zone, aLocale);
+			  } else {
+				cal = new GregorianCalendar(zone, aLocale);
+			  }
+			}
+			return cal;
+		  }
+		  //...
+		}
+		
+建造者模式在Calendar类中的应用
+	
+	建造者模式有两种实现方法，一种是单独定义一个 Builder 类，另一种是将 Builder 实现为原始类的内部类
+	
+	
+		public abstract class Calendar implements Serializable, Cloneable, Comparable<Calendar> {
+		  //...
+		  public static class Builder {
+			private static final int NFIELDS = FIELD_COUNT + 1;
+			private static final int WEEK_YEAR = FIELD_COUNT;
+			private long instant;
+			private int[] fields;
+			private int nextStamp;
+			private int maxFieldIndex;
+			private String type;
+			private TimeZone zone;
+			private boolean lenient = true;
+			private Locale locale;
+			private int firstDayOfWeek, minimalDaysInFirstWeek;
+
+			public Builder() {}
+			
+			public Builder setInstant(long instant) {
+				if (fields != null) {
+					throw new IllegalStateException();
+				}
+				this.instant = instant;
+				nextStamp = COMPUTED;
+				return this;
+			}
+			//...省略n多set()方法
+			
+			public Calendar build() {
+			  if (locale == null) {
+				locale = Locale.getDefault();
+			  }
+			  if (zone == null) {
+				zone = TimeZone.getDefault();
+			  }
+			  Calendar cal;
+			  if (type == null) {
+				type = locale.getUnicodeLocaleType("ca");
+			  }
+			  if (type == null) {
+				if (locale.getCountry() == "TH" && locale.getLanguage() == "th") {
+				  type = "buddhist";
+				} else {
+				  type = "gregory";
+				}
+			  }
+			  switch (type) {
+				case "gregory":
+				  cal = new GregorianCalendar(zone, locale, true);
+				  break;
+				case "iso8601":
+				  GregorianCalendar gcal = new GregorianCalendar(zone, locale, true);
+				  // make gcal a proleptic Gregorian
+				  gcal.setGregorianChange(new Date(Long.MIN_VALUE));
+				  // and week definition to be compatible with ISO 8601
+				  setWeekDefinition(MONDAY, 4);
+				  cal = gcal;
+				  break;
+				case "buddhist":
+				  cal = new BuddhistCalendar(zone, locale);
+				  cal.clear();
+				  break;
+				case "japanese":
+				  cal = new JapaneseImperialCalendar(zone, locale, true);
+				  break;
+				default:
+				  throw new IllegalArgumentException("unknown calendar type: " + type);
+			  }
+			  cal.setLenient(lenient);
+			  if (firstDayOfWeek != 0) {
+				cal.setFirstDayOfWeek(firstDayOfWeek);
+				cal.setMinimalDaysInFirstWeek(minimalDaysInFirstWeek);
+			  }
+			  if (isInstantSet()) {
+				cal.setTimeInMillis(instant);
+				cal.complete();
+				return cal;
+			  }
+
+			  if (fields != null) {
+				boolean weekDate = isSet(WEEK_YEAR) && fields[WEEK_YEAR] > fields[YEAR];
+				if (weekDate && !cal.isWeekDateSupported()) {
+				  throw new IllegalArgumentException("week date is unsupported by " + type);
+				}
+				for (int stamp = MINIMUM_USER_STAMP; stamp < nextStamp; stamp++) {
+				  for (int index = 0; index <= maxFieldIndex; index++) {
+					if (fields[index] == stamp) {
+					  cal.set(index, fields[NFIELDS + index]);
+					  break;
+					 }
+				  }
+				}
+
+				if (weekDate) {
+				  int weekOfYear = isSet(WEEK_OF_YEAR) ? fields[NFIELDS + WEEK_OF_YEAR] : 1;
+				  int dayOfWeek = isSet(DAY_OF_WEEK) ? fields[NFIELDS + DAY_OF_WEEK] : cal.getFirstDayOfWeek();
+				  cal.setWeekDate(fields[NFIELDS + WEEK_YEAR], weekOfYear, dayOfWeek);
+				}
+				cal.complete();
+			  }
+			  return cal;
+			}
+		  }
+		}
+		
+	思考：既然已经有了 getInstance() 工厂方法来创建 Calendar 类对象，为什么还要用 Builder 来创建 Calendar 类对象呢？
+	
+	工厂模式是用来创建不同但是相关类型的对象，由给定的参数来决定创建哪种类型的对象
+	
+	建造者模式用来创建一种类型的复杂对象，通过设置不同的可选参数，“定制化”地创建不同的对象。
+	
+	顾客走进一家餐馆点餐，我们利用工厂模式，根据用户不同的选择，来制作不同的食物，比如披萨、汉堡、沙拉。对于披萨来说，用户又有各种配料可以定制，比如奶酪、西红柿、起司，我们通过建造者模式根据用户选择的不同配料来制作不同的披萨。
+	
+	
+	实际上，从 Calendar 这个例子，我们也能学到，不要过于死板地套用各种模式的原理和实现，不要不敢做丝毫的改动。
+	
+	模式是死的，用的人是活的。在实际上的项目开发中，不仅各种模式可以混合在一起使用，而且具体的代码实现，也可以根据具体的功能需求做灵活的调整。
+	
+装饰器模式在Collections类中的应用
+	Java IO 类库是装饰器模式的非常经典的应用。实际上，Java 的 Collections 类也用到了装饰器模式。
+	
+	
+		public class Collections {
+		  private Collections() {}
+			
+		  public static <T> Collection<T> unmodifiableCollection(Collection<? extends T> c) {
+			return new UnmodifiableCollection<>(c);
+		  }
+
+		  static class UnmodifiableCollection<E> implements Collection<E>,   Serializable {
+			private static final long serialVersionUID = 1820017752578914078L;
+			final Collection<? extends E> c;
+
+			UnmodifiableCollection(Collection<? extends E> c) {
+			  if (c==null)
+				throw new NullPointerException();
+			  this.c = c;
+			}
+
+			public int size()                   {return c.size();}
+			public boolean isEmpty()            {return c.isEmpty();}
+			public boolean contains(Object o)   {return c.contains(o);}
+			public Object[] toArray()           {return c.toArray();}
+			public <T> T[] toArray(T[] a)       {return c.toArray(a);}
+			public String toString()            {return c.toString();}
+
+			public Iterator<E> iterator() {
+			  return new Iterator<E>() {
+				private final Iterator<? extends E> i = c.iterator();
+
+				public boolean hasNext() {return i.hasNext();}
+				public E next()          {return i.next();}
+				public void remove() {
+				  throw new UnsupportedOperationException();
+				}
+				@Override
+				public void forEachRemaining(Consumer<? super E> action) {
+				  // Use backing collection version
+				  i.forEachRemaining(action);
+				}
+			  };
+			}
+
+			public boolean add(E e) {
+			  throw new UnsupportedOperationException();
+			}
+			public boolean remove(Object o) {
+			   hrow new UnsupportedOperationException();
+			}
+			public boolean containsAll(Collection<?> coll) {
+			  return c.containsAll(coll);
+			}
+			public boolean addAll(Collection<? extends E> coll) {
+			  throw new UnsupportedOperationException();
+			}
+			public boolean removeAll(Collection<?> coll) {
+			  throw new UnsupportedOperationException();
+			}
+			public boolean retainAll(Collection<?> coll) {
+			  throw new UnsupportedOperationException();
+			}
+			public void clear() {
+			  throw new UnsupportedOperationException();
+			}
+
+			// Override default methods in Collection
+			@Override
+			public void forEach(Consumer<? super E> action) {
+			  c.forEach(action);
+			}
+			@Override
+			public boolean removeIf(Predicate<? super E> filter) {
+			  throw new UnsupportedOperationException();
+			}
+			@SuppressWarnings("unchecked")
+			@Override
+			public Spliterator<E> spliterator() {
+			  return (Spliterator<E>)c.spliterator();
+			}
+			@SuppressWarnings("unchecked")
+			@Override
+			public Stream<E> stream() {
+			  return (Stream<E>)c.stream();
+			}
+			@SuppressWarnings("unchecked")
+			@Override
+			public Stream<E> parallelStream() {
+			  return (Stream<E>)c.parallelStream();
+			}
+		  }
+		}
+		
+	装饰器模式中的装饰器类是对原始类功能的增强
+	
+	最关键的一点是，UnmodifiableCollection 的构造函数接收一个 Collection 类对象，然后对其所有的函数进行了包裹（Wrap）：重新实现（比如 add() 函数）或者简单封装（比如 stream() 函数）。而简单的接口实现或者继承，并不会如此来实现 UnmodifiableCollection 类。所以，从代码实现的角度来说，UnmodifiableCollection 类是典型的装饰器类。
+	
+
+适配器模式在Collections类中的应用
+	
+	适配器模式可以用来兼容老的版本接口
+	
+	老版本的 JDK 提供了 Enumeration 类来遍历容器。新版本的 JDK 用 Iterator 类替代 Enumeration 类来遍历容器。
+	
+	
+		/**
+		 * Returns an enumeration over the specified collection.  This provides
+		 * interoperability with legacy APIs that require an enumeration
+		 * as input.
+		 *
+		 * @param  <T> the class of the objects in the collection
+		 * @param c the collection for which an enumeration is to be returned.
+		 * @return an enumeration over the specified collection.
+		 * @see Enumeration
+		 */
+		public static <T> Enumeration<T> enumeration(final Collection<T> c) {
+		  return new Enumeration<T>() {
+			private final Iterator<T> i = c.iterator();
+
+			public boolean hasMoreElements() {
+			  return i.hasNext();
+			}
+
+			public T nextElement() {
+			  return i.next();
+			}
+		  };
+		}
+
+		勇匿名内部类完成适配
+
+尽管在之前的理论讲解中，我们都有讲到每个模式的经典代码实现，但是，在真实的项目开发中，这些模式的应用更加灵活，代码实现更加自由，可以根据具体的业务场景、功能需求，对代码实现做很大的调整，甚至还可能会对模式本身的设计思路做调整。
+
+
+有些人任务StringBuilder没有使用建造者模式，但是我觉得这有点学院派，我认为StringBuilder
+使用了建造者设计模式，StringBuilder 的 append方法就是建造者模式的思维方式。
+
+	建造者模式用来创建一种类型的复杂对象，通过设置不同的可选参数，“定制化”地创建不同的对象。
+	
+	
+模板模式在 Collections 类中的应用
+
+	策略、模板、职责链三个模式常用在框架的设计中，提供框架的扩展点，让框架使用者，在不修改框架源码的情况下，基于扩展点定制化框架的功能
+	
+	Collections.sort() 
+	
+		
+		public class Demo {
+		  public static void main(String[] args) {
+			List<Student> students = new ArrayList<>();
+			students.add(new Student("Alice", 19, 89.0f));
+			students.add(new Student("Peter", 20, 78.0f));
+			students.add(new Student("Leo", 18, 99.0f));
+
+			Collections.sort(students, new AgeAscComparator());
+			print(students);
+			
+			Collections.sort(students, new NameAscComparator());
+			print(students);
+			
+			Collections.sort(students, new ScoreDescComparator());
+			print(students);
+		  }
+
+		  public static void print(List<Student> students) {
+			for (Student s : students) {
+			  System.out.println(s.getName() + " " + s.getAge() + " " + s.getScore());
+			}
+		  }
+
+		  public static class AgeAscComparator implements Comparator<Student> {
+			@Override
+			public int compare(Student o1, Student o2) {
+			  return o1.getAge() - o2.getAge();
+			}
+		  }
+
+		  public static class NameAscComparator implements Comparator<Student> {
+			@Override
+			public int compare(Student o1, Student o2) {
+			  return o1.getName().compareTo(o2.getName());
+			}
+		  }
+
+		  public static class ScoreDescComparator implements Comparator<Student> {
+			@Override
+			public int compare(Student o1, Student o2) {
+			  if (Math.abs(o1.getScore() - o2.getScore()) < 0.001) {
+				return 0;
+			  } else if (o1.getScore() < o2.getScore()) {
+				return 1;
+			  } else {
+				return -1;
+			  }
+			}
+		  }
+		}
+	
+	为什么说 Collections.sort() 函数用到了模板模式？
+	Collections.sort() 实现了对集合的排序。为了扩展性，它将其中“比较大小”这部分逻辑，委派给用户来实现
+	
+	从代码实现的角度来看，它看起来有点类似之前讲过的 JdbcTemplate，并不是模板模式的经典代码实现，而是基于 Callback 回调机制来实现的。
+	
+	不过，在其他资料中，我还看到有人说，Collections.sort() 使用的是策略模式。这样的说法也不是没有道理的。如果我们并不把“比较大小”看作排序逻辑中的一个步骤，而是看作一种算法或者策略，那我们就可以把它看作一种策略模式的应用。
+	
+	不过，这也不是典型的策略模式，我们前面讲到，在典型的策略模式中，策略模式分为策略的定义、创建、使用这三部分。
+	
+	这就是灵活，灵活
+	
+观察者模式在 JDK 中的应用
+
+		Google Guava 的 EventBus 框架
+		
+		Java JDK 也提供了观察者模式的简单框架实现
+		
+		java.util.Observable 和 java.util.Observer
+		
+					
+			public interface Observer {
+				void update(Observable o, Object arg);
+			}
+
+			public class Observable {
+				private boolean changed = false;
+				private Vector<Observer> obs;
+
+				public Observable() {
+					obs = new Vector<>();
+				}
+
+				public synchronized void addObserver(Observer o) {
+					if (o == null)
+						throw new NullPointerException();
+					if (!obs.contains(o)) {
+						obs.addElement(o);
+					}
+				}
+
+				public synchronized void deleteObserver(Observer o) {
+					obs.removeElement(o);
+				}
+
+				public void notifyObservers() {
+					notifyObservers(null);
+				}
+
+				public void notifyObservers(Object arg) {
+					Object[] arrLocal;
+
+					synchronized (this) {
+						if (!changed)
+							return;
+						arrLocal = obs.toArray();
+						clearChanged();
+					}
+
+					for (int i = arrLocal.length-1; i>=0; i--)
+						((Observer)arrLocal[i]).update(this, arg);
+				}
+
+				public synchronized void deleteObservers() {
+					obs.removeAllElements();
+				}
+
+				protected synchronized void setChanged() {
+					changed = true;
+				}
+
+				protected synchronized void clearChanged() {
+					changed = false;
+				}
+			}
+			
+			
+		这里需要注意的技术细节
+			
+			Vector并非线程安全，它只是在方法上加了同步标记而已，
+			在多线程环境下，同时添加、删除、遍历 Vector 类对象中的元素，会出现不可预期的结果。
+			
+			相比之下，SynchronizedCollection则是对对象进行加锁，在做涉及到线程安全问题的操作时，都需要先获取到对象锁之后才能进行
+			
+		上源码进行对比
+		
+		Vector源码就不放了
+		
+		上SynchronizedCollection
+		
+			static class SynchronizedCollection<E> implements Collection<E>, Serializable {
+				private static final long serialVersionUID = 3053995032091335093L;
+
+				final Collection<E> c;  // Backing Collection
+				final Object mutex;     // Object on which to synchronize
+
+				SynchronizedCollection(Collection<E> c) {
+					this.c = Objects.requireNonNull(c);
+					mutex = this;
+				}
+
+				SynchronizedCollection(Collection<E> c, Object mutex) {
+					this.c = Objects.requireNonNull(c);
+					this.mutex = Objects.requireNonNull(mutex);
+				}
+
+				public int size() {
+					synchronized (mutex) {return c.size();}
+				}
+				public boolean isEmpty() {
+					synchronized (mutex) {return c.isEmpty();}
+				}
+				public boolean contains(Object o) {
+					synchronized (mutex) {return c.contains(o);}
+				}
+				public Object[] toArray() {
+					synchronized (mutex) {return c.toArray();}
+				}
+				public <T> T[] toArray(T[] a) {
+					synchronized (mutex) {return c.toArray(a);}
+				}
+
+				public Iterator<E> iterator() {
+					return c.iterator(); // Must be manually synched by user!
+				}
+
+				public boolean add(E e) {
+					synchronized (mutex) {return c.add(e);}
+				}
+				public boolean remove(Object o) {
+					synchronized (mutex) {return c.remove(o);}
+				}
+
+				public boolean containsAll(Collection<?> coll) {
+					synchronized (mutex) {return c.containsAll(coll);}
+				}
+				public boolean addAll(Collection<? extends E> coll) {
+					synchronized (mutex) {return c.addAll(coll);}
+				}
+				public boolean removeAll(Collection<?> coll) {
+					synchronized (mutex) {return c.removeAll(coll);}
+				}
+				public boolean retainAll(Collection<?> coll) {
+					synchronized (mutex) {return c.retainAll(coll);}
+				}
+				public void clear() {
+					synchronized (mutex) {c.clear();}
+				}
+				public String toString() {
+					synchronized (mutex) {return c.toString();}
+				}
+				// Override default methods in Collection
+				@Override
+				public void forEach(Consumer<? super E> consumer) {
+					synchronized (mutex) {c.forEach(consumer);}
+				}
+				@Override
+				public boolean removeIf(Predicate<? super E> filter) {
+					synchronized (mutex) {return c.removeIf(filter);}
+				}
+				@Override
+				public Spliterator<E> spliterator() {
+					return c.spliterator(); // Must be manually synched by user!
+				}
+				@Override
+				public Stream<E> stream() {
+					return c.stream(); // Must be manually synched by user!
+				}
+				@Override
+				public Stream<E> parallelStream() {
+					return c.parallelStream(); // Must be manually synched by user!
+				}
+				private void writeObject(ObjectOutputStream s) throws IOException {
+					synchronized (mutex) {s.defaultWriteObject();}
+				}
+			}
+			
+单例模式在 Runtime 类中的应用
+
+		注意，这里使用了饿汉式，在没有学习极客时间以前我觉得饿汉式有点鸡肋
+		听了争哥的讲解，真的是如梦方醒，醍醐灌顶
+	
+		/**
+		 * Every Java application has a single instance of class
+		 * <code>Runtime</code> that allows the application to interface with
+		 * the environment in which the application is running. The current
+		 * runtime can be obtained from the <code>getRuntime</code> method.
+		 * <p>
+		 * An application cannot create its own instance of this class.
+		 *
+		 * @author  unascribed
+		 * @see     java.lang.Runtime#getRuntime()
+		 * @since   JDK1.0
+		 */
+		public class Runtime {
+		  private static Runtime currentRuntime = new Runtime();
+
+		  public static Runtime getRuntime() {
+			return currentRuntime;
+		  }
+		  
+		  /** Don't let anyone else instantiate this class */
+		  private Runtime() {}
+		  
+		  //....
+		  public void addShutdownHook(Thread hook) {
+			SecurityManager sm = System.getSecurityManager();
+			if (sm != null) {
+			   sm.checkPermission(new RuntimePermission("shutdownHooks"));
+			}
+			ApplicationShutdownHooks.add(hook);
+		  }
+		  //...
+		}
+		
+		
+模板模式的时候，我们结合 Java Servlet、JUnit TestCase、Java InputStream、Java AbstractList 四个例子，来具体讲解了它的两个作用：扩展性和复用性。
+
+享元模式的时候，我们讲到 Integer 类中的 -128~127 之间的整型对象是可以复用的，还讲到 String 类型中的常量字符串也是可以复用的。这些都是享元模式的经典应用。
+
+职责链模式的时候，我们讲到Java Servlet 中的 Filter 就是通过职责链来实现的，同时还对比了 Spring 中的 interceptor。实际上，拦截器、过滤器这些功能绝大部分都是采用职责链模式来实现的。
+
+迭代器模式的时候，我们重点剖析了 Java 中 Iterator 迭代器的实现，手把手带你实现了一个针对线性数据结构的迭代器。
+
