@@ -1,0 +1,245 @@
+# CyclicBarrier
+
+学习了**ReentrantLock、CountDownLatch、Semaphore**后，大概了解了AQS的使用方式，每个组件都在内部维护了一个AQS的子类，通过重写或扩展AQS的功能来实现自己的目的。
+
+复习的时候请按上面三个来复习，当然如果了解剧情了，可以随缘看。
+
+CyclicBarrier也一样，我们用同样的方式来读读源码，先看内部维护的Sync
+
+```java
+//WTF
+```
+
+这个。。。。
+
+果然不按常理出牌，在CyclicBarrier的源码里并没有找到Sync同步器，到时发现他内部使用了ReentrantLock。
+
+还是应该先看注释，程序还是要走的，不能飘，但是我就不翻译了，懂的自然懂
+
+```java
+/**
+ * A synchronization aid that allows a set of threads to all wait for
+ * each other to reach a common barrier point.  CyclicBarriers are
+ * useful in programs involving a fixed sized party of threads that
+ * must occasionally wait for each other. The barrier is called
+ * <em>cyclic</em> because it can be re-used after the waiting threads
+ * are released.
+ *
+ * <p>A {@code CyclicBarrier} supports an optional {@link Runnable} command
+ * that is run once per barrier point, after the last thread in the party
+ * arrives, but before any threads are released.
+ * This <em>barrier action</em> is useful
+ * for updating shared-state before any of the parties continue.
+ *
+ * <p><b>Sample usage:</b> Here is an example of using a barrier in a
+ * parallel decomposition design:
+ *
+ *  <pre> {@code
+ * class Solver {
+ *   final int N;
+ *   final float[][] data;
+ *   final CyclicBarrier barrier;
+ *
+ *   class Worker implements Runnable {
+ *     int myRow;
+ *     Worker(int row) { myRow = row; }
+ *     public void run() {
+ *       while (!done()) {
+ *         processRow(myRow);
+ *
+ *         try {
+ *           barrier.await();
+ *         } catch (InterruptedException ex) {
+ *           return;
+ *         } catch (BrokenBarrierException ex) {
+ *           return;
+ *         }
+ *       }
+ *     }
+ *   }
+ *
+ *   public Solver(float[][] matrix) {
+ *     data = matrix;
+ *     N = matrix.length;
+ *     Runnable barrierAction =
+ *       new Runnable() { public void run() { mergeRows(...); }};
+ *     barrier = new CyclicBarrier(N, barrierAction);
+ *
+ *     List<Thread> threads = new ArrayList<Thread>(N);
+ *     for (int i = 0; i < N; i++) {
+ *       Thread thread = new Thread(new Worker(i));
+ *       threads.add(thread);
+ *       thread.start();
+ *     }
+ *
+ *     // wait until done
+ *     for (Thread thread : threads)
+ *       thread.join();
+ *   }
+ * }}</pre>
+ *
+ * Here, each worker thread processes a row of the matrix then waits at the
+ * barrier until all rows have been processed. When all rows are processed
+ * the supplied {@link Runnable} barrier action is executed and merges the
+ * rows. If the merger
+ * determines that a solution has been found then {@code done()} will return
+ * {@code true} and each worker will terminate.
+ *
+ * <p>If the barrier action does not rely on the parties being suspended when
+ * it is executed, then any of the threads in the party could execute that
+ * action when it is released. To facilitate this, each invocation of
+ * {@link #await} returns the arrival index of that thread at the barrier.
+ * You can then choose which thread should execute the barrier action, for
+ * example:
+ *  <pre> {@code
+ * if (barrier.await() == 0) {
+ *   // log the completion of this iteration
+ * }}</pre>
+ *
+ * <p>The {@code CyclicBarrier} uses an all-or-none breakage model
+ * for failed synchronization attempts: If a thread leaves a barrier
+ * point prematurely because of interruption, failure, or timeout, all
+ * other threads waiting at that barrier point will also leave
+ * abnormally via {@link BrokenBarrierException} (or
+ * {@link InterruptedException} if they too were interrupted at about
+ * the same time).
+ *
+ * <p>Memory consistency effects: Actions in a thread prior to calling
+ * {@code await()}
+ * <a href="package-summary.html#MemoryVisibility"><i>happen-before</i></a>
+ * actions that are part of the barrier action, which in turn
+ * <i>happen-before</i> actions following a successful return from the
+ * corresponding {@code await()} in other threads.
+ *
+ * @since 1.5
+ * @see CountDownLatch
+ *
+ * @author Doug Lea
+ */
+
+public class CyclicBarrier {
+    /**
+     * Each use of the barrier is represented as a generation instance.
+     * The generation changes whenever the barrier is tripped, or
+     * is reset. There can be many generations associated with threads
+     * using the barrier - due to the non-deterministic way the lock
+     * may be allocated to waiting threads - but only one of these
+     * can be active at a time (the one to which {@code count} applies)
+     * and all the rest are either broken or tripped.
+     * There need not be an active generation if there has been a break
+     * but no subsequent reset.
+     */
+    private static class Generation {
+        boolean broken = false;
+    }
+
+    /** The lock for guarding barrier entry */
+    private final ReentrantLock lock = new ReentrantLock();
+    /** Condition to wait on until tripped */
+    private final Condition trip = lock.newCondition();
+    /** The number of parties */
+    private final int parties;
+    /* The command to run when tripped */
+    private final Runnable barrierCommand;
+    /** The current generation */
+    private Generation generation = new Generation();
+
+    /**
+     * Number of parties still waiting. Counts down from parties to 0
+     * on each generation.  It is reset to parties on each new
+     * generation or when broken.
+     */
+    private int count;
+    /**
+     * Updates state on barrier trip and wakes up everyone.
+     * Called only while holding lock.
+     */
+    private void nextGeneration() {
+        // signal completion of last generation
+        trip.signalAll();
+        // set up next generation
+        count = parties;
+        generation = new Generation();
+    }
+    /**
+     * Sets current barrier generation as broken and wakes up everyone.
+     * Called only while holding lock.
+     */
+    private void breakBarrier() {
+        generation.broken = true;
+        count = parties;
+        trip.signalAll();
+    }
+ /**
+     * Main barrier code, covering the various policies.
+     */
+    private int dowait(boolean timed, long nanos)
+        throws InterruptedException, BrokenBarrierException,
+               TimeoutException {
+        final ReentrantLock lock = this.lock;
+        lock.lock();
+        try {
+            final Generation g = generation;
+
+            if (g.broken)
+                throw new BrokenBarrierException();
+
+            if (Thread.interrupted()) {
+                breakBarrier();
+                throw new InterruptedException();
+            }
+
+            int index = --count;
+            if (index == 0) {  // tripped
+                boolean ranAction = false;
+                try {
+                    final Runnable command = barrierCommand;
+                    if (command != null)
+                        command.run();
+                    ranAction = true;
+                    nextGeneration();
+                    return 0;
+                } finally {
+                    if (!ranAction)
+                        breakBarrier();
+                }
+            }
+
+            // loop until tripped, broken, interrupted, or timed out
+            for (;;) {
+                try {
+                    if (!timed)
+                        trip.await();
+                    else if (nanos > 0L)
+                        nanos = trip.awaitNanos(nanos);
+                } catch (InterruptedException ie) {
+                    if (g == generation && ! g.broken) {
+                        breakBarrier();
+                        throw ie;
+                    } else {
+                        // We're about to finish waiting even if we had not
+                        // been interrupted, so this interrupt is deemed to
+                        // "belong" to subsequent execution.
+                        Thread.currentThread().interrupt();
+                    }
+                }
+
+                if (g.broken)
+                    throw new BrokenBarrierException();
+
+                if (g != generation)
+                    return index;
+
+                if (timed && nanos <= 0L) {
+                    breakBarrier();
+                    throw new TimeoutException();
+                }
+            }
+        } finally {
+            lock.unlock();
+        }
+    }
+```
+
+
+

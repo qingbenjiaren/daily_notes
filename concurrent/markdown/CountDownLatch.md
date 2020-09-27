@@ -106,12 +106,21 @@ public boolean await(long timeout, TimeUnit unit)
      * thread scheduling purposes.
      *
      * <p>If the current count equals zero then nothing happens.
-     * AQS同步器状态减一，若状态为零，唤醒所有等待线程
+     * AQS同步器状态减一，若状态为零，唤醒所有等待线程，见AQS难点回顾篇
      */
 public void countDown() {
     sync.releaseShared(1);
 }
-
+ /**
+     * Returns the current count.
+     *
+     * <p>This method is typically used for debugging and testing purposes.
+     *
+     * @return the current count0
+     */
+public long getCount() {
+    return sync.getCount();
+}
 
 
 ```
