@@ -1,0 +1,263 @@
+借Google Guava学习发现和开发通用功能模块
+
+	
+	学习设计思想、使用的设计模式
+	
+	Google Guava 是 Google 公司内部 Java 开发工具库的开源版本。Google 内部的很多 Java 项目都在使用它。它提供了一些 JDK 没有提供的功能，以及对 JDK 已有功能的增强功能。其中就包括：集合（Collections）、缓存（Caching）、原生类型支持（Primitives Support）、并发库（Concurrency Libraries）、通用注解（Common Annotation）、字符串处理（Strings Processing）、数学计算（Math）、I/O、事件总线（EventBus）等等。
+	
+	JDK 的全称是 Java Development Kit。它本身就是 Java 提供的工具类库
+	
+	既然有了 JDK，为什么 Google 还要开发一套新的类库 Google Guava？
+	
+	结合 Google Guava，我们来学习如何在业务开发中，发现通用的功能模块，以及如何将它开发成类库、框架或者功能组件
+	
+	如何发现通用功能模块
+		
+		关键在于，我们要有善于发现、善于抽象的能力，并且具有扎实的设计、开发能力，能够发现这些非业务的、可复用的功能点，并且从业务逻辑中将其解耦抽象出来，设计并开发成独立的功能模块。
+		
+		在我看来，在业务开发中，跟业务无关的通用功能模块，常见的一般有三类：类库（library）、框架（framework）、功能组件（component）等。
+		
+		其中，Google Guava 属于类库，提供一组 API 接口。
+		
+		如果业务代码嵌套在它们里面开发，那就可以称它们为框架。如果它们只是开放 API 接口，供业务系统调用，那就可以称它们为组件。
+		
+		通用功能模块有两个最大的特点：复用和业务无关。Google Guava 就是一个典型的例子。
+		
+		如果与业务有关又可复用，大部分情况下会设计成独立的系统（比如微服务），而不是类库、框架或功能组件
+		
+		如果你负责开发的代码，与业务无关并且可能会被复用，那你就可以考虑将它独立出来，开发成类库、框架、功能组件等通用功能模块。
+		
+		
+	如何开发通用的功能模块？
+	
+		产品意识
+	
+			这个产品是一个“技术产品”，我们的目标用户是“程序员”，解决的是他们的“开发痛点”。
+			
+			是否易用、易集成、易插拔、文档是否全面、是否容易上手等
+			
+			往往就是这些很容易忽视、不被重视的东西，会决定一个技术产品是否能在众多的同类中脱颖而出。
+			
+			具体到 Google Guava，它是一个开发类库，目标用户是 Java 开发工程师，解决用户主要痛点是，相对于 JDK，提供更多的工具类，简化代码编写，比如，它提供了用来判断 null 值的 Preconditions 类；Splitter、Joiner、CharMatcher 字符串处理类；Multisets、Multimaps、Tables 等更丰富的 Collections 类等等。
+			
+			第一，由 Google 管理、长期维护，经过充分的单元测试，代码质量有保证；
+			
+			第二，可靠、性能好、高度优化，比如 Google Guava 提供的 Immutable Collections 要比 JDK 的 unmodifiableCollection 性能好；
+			
+			第三，全面、完善的文档，容易上手，学习成本低，你可以去看下它的 Github Wiki。
+			
+		
+		服务意识
+		
+			从心态上，别的团队使用我们开发出来的技术产品，我们要学会感谢
+			
+			通过阅读著名开源项目代码、参与开源项目来提高技术的原因。
+			
+			具体到 Google Guava，它是 Google 员工开发的，单元测试很完善，注释写得很规范，代码写得也很好，可以说是学习 Google 开发经验的一手资料，建议你如果有时间的话，可以认真阅读一下它的代码。
+			
+			能复用的尽量复用。
+			
+			通过接口、扩展点等松耦合的方式跟其他模式交互。等到时机成熟了，我们再将它从项目中剥离出来。因为之前模块化做的好，耦合程度低，剥离出来的成本也就不会很高。
+			
+			
+guava中使用到的设计模式
+	
+	Builder模式
+		
+		常用的缓存系统有 Redis、Memcache 等。
+		
+		但是如果要缓存的数据比较少，我们完全没必要在项目中独立部署一套缓存系统。
+		
+		项目中包含的系统越多，那组合起来，项目整体出错的概率就会升高，可用性就会降低。
+		
+		同时，多引入一个系统就要多维护一个系统，项目维护的成本就会变高。
+		
+		取而代之，我们可以在系统内部构建一个内存缓存，跟系统集成在一起开发、部署。
+		
+		我们可以基于 JDK 提供的类，比如 HashMap，从零开始开发内存缓存
+		
+		从零开发一个内存缓存，涉及的工作就会比较多，比如缓存淘汰策略等
+		
+		使用 Google Guava 提供的现成的缓存工具类 com.google.common.cache.*。
+		
+		
+		public class CacheDemo {
+		  public static void main(String[] args) {
+			Cache<String, String> cache = CacheBuilder.newBuilder()
+					.initialCapacity(100)
+					.maximumSize(1000)
+					.expireAfterWrite(10, TimeUnit.MINUTES)
+					.build();
+
+			cache.put("key1", "value1");
+			String value = cache.getIfPresent("key1");
+			System.out.println(value);
+		  }
+		}
+		
+		为什么要由 Builder 类来创建 Cache 对象呢？
+		
+			构建一个缓存，需要配置 n 多参数，比如过期时间、淘汰策略、最大缓存大小等等。
+			相应地，Cache 类就会包含 n 多成员变量。
+			我们需要在构造函数中，设置这些成员变量的值，但又不是所有的值都必须设置，设置哪些值由用户来决定。
+			
+			为了满足这个需求，我们就需要定义多个包含不同参数列表的构造函数。
+			
+			为了避免构造函数的参数列表过长、不同的构造函数过多，我们一般有两种解决方案。
+			
+				一个解决方案是使用 Builder 模式
+				
+				另一个方案是先通过无参构造函数创建对象，然后再通过 setXXX() 方法来逐一设置需要的设置的成员变量。
+				
+			不能使用第二种：
+				
+				
+				public <K1 extends K, V1 extends V> Cache<K1, V1> build() {
+				  this.checkWeightWithWeigher();
+				  this.checkNonLoadingCache();
+				  return new LocalManualCache(this);
+				}
+
+				private void checkNonLoadingCache() {
+				  Preconditions.checkState(this.refreshNanos == -1L, "refreshAfterWrite requires a LoadingCache");
+				}
+
+				private void checkWeightWithWeigher() {
+				  if (this.weigher == null) {
+					Preconditions.checkState(this.maximumWeight == -1L, "maximumWeight requires weigher");
+				  } else if (this.strictParsing) {
+					Preconditions.checkState(this.maximumWeight != -1L, "weigher requires maximumWeight");
+				  } else if (this.maximumWeight == -1L) {
+					logger.log(Level.WARNING, "ignoring weigher specified without maximumWeight");
+				  }
+
+				}
+				
+			在真正构造 Cache 对象的时候，我们必须做一些必要的参数校验，也就是 build() 函数中前两行代码要做的工作
+			
+			如果采用无参默认构造函数加 setXXX() 方法的方案，这两个校验就无处安放了。而不经过校验，创建的 Cache 对象有可能是不合法、不可用的。
+			
+			
+	Wrapper 模式在 Guava 中的应用
+		
+		图片。。。。。
+		
+		这组 Forwarding 类很多，但实现方式都很相似。
+		
+		先看下代码，然后思考下这组 Forwarding 类是干什么用的。
+		
+		
+		
+			@GwtCompatible
+			public abstract class ForwardingCollection<E> extends ForwardingObject implements Collection<E> {
+			  protected ForwardingCollection() {
+			  }
+
+			  protected abstract Collection<E> delegate();
+
+			  public Iterator<E> iterator() {
+				return this.delegate().iterator();
+			  }
+
+			  public int size() {
+				return this.delegate().size();
+			  }
+
+			  @CanIgnoreReturnValue
+			  public boolean removeAll(Collection<?> collection) {
+				return this.delegate().removeAll(collection);
+			  }
+
+			  public boolean isEmpty() {
+				return this.delegate().isEmpty();
+			  }
+
+			  public boolean contains(Object object) {
+				return this.delegate().contains(object);
+			  }
+
+			  @CanIgnoreReturnValue
+			  public boolean add(E element) {
+				return this.delegate().add(element);
+			  }
+
+			  @CanIgnoreReturnValue
+			  public boolean remove(Object object) {
+				return this.delegate().remove(object);
+			  }
+
+			  public boolean containsAll(Collection<?> collection) {
+				return this.delegate().containsAll(collection);
+			  }
+
+			  @CanIgnoreReturnValue
+			  public boolean addAll(Collection<? extends E> collection) {
+				return this.delegate().addAll(collection);
+			  }
+
+			  @CanIgnoreReturnValue
+			  public boolean retainAll(Collection<?> collection) {
+				return this.delegate().retainAll(collection);
+			  }
+
+			  public void clear() {
+				this.delegate().clear();
+			  }
+
+			  public Object[] toArray() {
+				return this.delegate().toArray();
+			  }
+			  
+			  //...省略部分代码...
+			}
+
+			再看下用法示例
+			
+			
+				public class AddLoggingCollection<E> extends ForwardingCollection<E> {
+				  private static final Logger logger = LoggerFactory.getLogger(AddLoggingCollection.class);
+				  private Collection<E> originalCollection;
+
+				  public AddLoggingCollection(Collection<E> originalCollection) {
+					this.originalCollection = originalCollection;
+				  }
+
+				  @Override
+				  protected Collection delegate() {
+					return this.originalCollection;
+				  }
+
+				  @Override
+				  public boolean add(E element) {
+					logger.info("Add element: " + element);
+					return this.delegate().add(element);
+				  }
+
+				  @Override
+				  public boolean addAll(Collection<? extends E> collection) {
+					logger.info("Size of elements to add: " + collection.size());
+					return this.delegate().addAll(collection);
+				  }
+
+				}
+				
+	看看争哥的讲解：
+		醍醐灌顶，如梦方醒
+			结合源码和示例
+			AddLoggingCollection 是基于代理模式实现的一个代理类，它在原始 Collection 类的基础之上，针对“add”相关的操作，添加了记录日志的功能。
+			
+			我们前面讲到，代理模式、装饰器、适配器模式可以统称为 Wrapper 模式，
+			通过 Wrapper 类二次封装原始类
+			
+			它们的代码实现也很相似，都可以通过组合的方式，将 Wrapper 类的函数实现委托给原始类的函数来实现。
+			
+			实际上，这个 ForwardingCollection 类是一个“默认 Wrapper 类”或者叫“缺省 Wrapper 类”。
+			
+			这类似于在装饰器模式那一节课中，讲到的 FilterInputStream 缺省装饰器类。
+			
+			如果我们不使用这个 ForwardinCollection 类，而是让 AddLoggingCollection 代理类直接实现 Collection 接口
+			
+			那 Collection 接口中的所有方法，都要在 AddLoggingCollection 类中实现一遍，而真正需要添加日志功能的只有 add() 和 addAll() 两个函数，其他函数的实现，都只是类似 Wrapper 类中 f2() 函数的实现那样，简单地委托给原始 collection 类对象的对应函数。
+			
+			
+			
