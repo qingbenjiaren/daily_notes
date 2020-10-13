@@ -260,4 +260,111 @@ guava中使用到的设计模式
 			那 Collection 接口中的所有方法，都要在 AddLoggingCollection 类中实现一遍，而真正需要添加日志功能的只有 add() 和 addAll() 两个函数，其他函数的实现，都只是类似 Wrapper 类中 f2() 函数的实现那样，简单地委托给原始 collection 类对象的对应函数。
 			
 			
+	Immutable 模式在Guava中的应用
+		
+		Immutable 模式，中文叫作不变模式
+		
+		一个对象的状态在对象创建之后就不再改变，这就是所谓的不变模式。其中涉及的类就是不变类（Immutable Class），对象就是不变对象（Immutable Object）。在 Java 中，最常用的不变类就是 String 类，String 对象一旦创建之后就无法改变。
+		
+		不变模式可以分为两类，一类是普通不变模式，另一类是深度不变模式（Deeply Immutable Pattern）
+		
+		普通的不变模式指的是，对象中包含的引用对象是可以改变的。如果不特别说明，通常我们所说的不变模式，指的就是普通的不变模式
+		
+		深度不变模式指的是，对象包含的引用对象也不可变。
+		
+		那如何将一个不变类呢？
+			
+			只要这个类满足：所有的成员变量都通过构造函数一次性设置好，不暴露任何 set 等修改成员变量的方法
+			
+			因为数据不变，所以不存在并发读写问题，因此不变模式常用在多线程环境下，来避免线程加锁。所以，不变模式也常被归类为多线程设计模式。
+			
+		
+		不变集合
+		
+			Google Guava 针对集合类（Collection、List、Set、Map…）提供了对应的不变集合类（ImmutableCollection、ImmutableList、ImmutableSet、ImmutableMap…）
+			Java JDK 也提供了不变集合类UnmodifiableCollection、UnmodifiableList、UnmodifiableSet、UnmodifiableMap…
+			
+			
+				public class ImmutableDemo {
+				  public static void main(String[] args) {
+					List<String> originalList = new ArrayList<>();
+					originalList.add("a");
+					originalList.add("b");
+					originalList.add("c");
+
+					List<String> jdkUnmodifiableList = Collections.unmodifiableList(originalList);
+					List<String> guavaImmutableList = ImmutableList.copyOf(originalList);
+
+					//jdkUnmodifiableList.add("d"); // 抛出UnsupportedOperationException
+					// guavaImmutableList.add("d"); // 抛出UnsupportedOperationException
+					originalList.add("d");
+
+					print(originalList); // a b c d
+					print(jdkUnmodifiableList); // a b c d
+					print(guavaImmutableList); // a b c
+				  }
+
+				  private static void print(List<String> list) {
+					for (String s : list) {
+					  System.out.print(s + " ");
+					}
+					System.out.println();
+				  }
+				}
+			
+	
+	借guava学习函数式编程
+		
+		
+		面向对象编程最大的特点是：以类、对象作为组织代码的单元以及它的四大特性。面向过程编程最大的特点是：以函数作为组织代码的单元，数据与方法相分离。那函数式编程最独特的地方又在哪里呢？
+		
+		实际上，函数式编程最独特的地方在于它的编程思想。函数式编程认为，程序可以用一系列数学函数或表达式的组合来表示。
+		
+		函数式编程有它自己适合的应用场景，比如开篇提到的科学计算、数据处理、统计分析等。
+		
+		
+		Java 为函数式编程引入了三个新的语法概念：Stream 类、Lambda 表达式和函数接口（Functional Inteface）
+		
+		Stream 类用来支持通过“.”级联多个函数操作的代码编写方式；
+		
+		引入 Lambda 表达式的作用是简化代码编写；
+		
+		函数接口的作用是让我们可以把函数包裹成函数接口，来实现把函数当做参数一样来使用（Java 不像 C 一样支持函数指针，可以把函数直接当参数来使用）。
+		
+		在 Stream 类上的操作有两种：中间操作和终止操作。中间操作返回的仍然是 Stream 类对象，而终止操作返回的是确定的值结果。
+		
+		
+		其次，我们再来看下 Lambda 表达式。
+		
+		
+		实际上，我们也可以不用 Lambda 表达式来书写例子中的代码
+		
+		Lambda 表达式在 Java 中只是一个语法糖而已，底层是基于函数接口来实现的
+		
+		实际上，Lambda 表达式的写法非常灵活。我们刚刚给出的是标准写法，还有很多简化写法。比如，如果输入参数只有一个，可以省略 ()，
+		直接写成 a->{…}；如果没有入参，可以直接将输入和箭头都省略掉，只保留函数体；如果函数体只有一个语句，那可以将{}省略掉；如果函数没有返回值，return 语句就可以不用写了。
+		
+		
+		
+		最后看下函数接口
+			
+			实际上，函数接口就是接口。不过，它也有自己特别的地方，那就是要求只包含一个未实现的方法。因为只有这样，Lambda 表达式才能明确知道匹配的是哪个接口。
+			
+		
+		
+	Guava 对函数式编程的增强
+		
+		颠覆式创新是很难的。不过我们可以进行一些补充
+		
+		从 Google Guava 的 GitHub Wiki 中，我们发现，Google 对于函数式编程的使用还是很谨慎的，认为过度地使用函数式编程，会导致代码可读性变差，强调不要滥用。
+		
+		所以，在函数式编程方面，Google Guava 并没有提供太多的支持。
+		
+		如果不使用函数式编程，我们只能 for 循环，一个一个的处理集合中的数据。使用函数式编程，可以大大简化遍历集合操作的代码编写，一行代码就能搞定，而且在可读性方面也没有太大损失。
+		
+		不要为了节省代码行数，滥用函数式编程，导致代码可读性变差。
+		
+		
+		
+		
 			
